@@ -67,6 +67,56 @@ management, Game DVR, driver quality.
 Disable a service when you have a specific reason to (attack surface, a known
 misbehaviour, hardware you do not have), not to make a number go down.
 
+## Candidates the script leaves to you
+
+None of these is in `bloat.services`, because none of them is safe to decide for
+somebody else — each depends on hardware you may or may not have, or a feature you
+may or may not use. All are marked `OK to disable` in Microsoft's own table, and
+all of them cost you nothing on a machine that does not use them.
+
+Set them to **Manual** first. A Manual service that nothing asks for never starts,
+and you can put it back without a reboot.
+
+| Service | Display name | What you lose |
+| --- | --- | --- |
+| `bthserv`, `BthAvctpSvc` | Bluetooth Support, AVCTP | Bluetooth entirely — pairing, audio, controllers. Only if the machine has no Bluetooth device at all. |
+| `lfsvc` | Geolocation Service | Location for apps that ask, and automatic time zone. |
+| `WalletService`, `SEMgrSvc` | Wallet, Payments and NFC | Tap-to-pay. On a desktop with no NFC hardware, nothing. |
+| `PhoneSvc`, `SmsRouter` | Phone Service, SMS Router | Phone Link calls and text messages. |
+| `icssvc` | Windows Mobile Hotspot | Sharing your connection with other devices. |
+| `SharedAccess` | Internet Connection Sharing | The same thing by the older mechanism. Also a documented attack surface. |
+| `WebClient` | WebClient | WebDAV drive mapping. Worth disabling on its own merits: it is remotely reachable and has a history. |
+| `ScardSvr` | Smart Card | Smart-card logon. Corporate laptops only. |
+| `WMPNetworkSvc` | Windows Media Player Network Sharing | DLNA sharing from a player Windows no longer ships by default. |
+| `wisvc` | Windows Insider Service | Insider builds. Not a performance change either way. |
+| `PcaSvc` | Program Compatibility Assistant | The "this program didn't install correctly" prompts and shim application. Harmless to keep. |
+
+**`RasMan` is the trap in this group.** It reads as dial-up, and Microsoft marks it
+`OK to disable`, but the built-in VPN client and several third-party VPN clients
+depend on it. Leave it alone unless you are certain.
+
+## What people turn back on
+
+The list below is what actually breaks when a service list is applied wholesale.
+Each of these is a service that gets disabled by popular lists and then has to be
+restored, usually days later and usually after the symptom has been blamed on
+something else.
+
+| Service | Symptom when it is off |
+| --- | --- |
+| `BFE` + `mpssvc` | Firewall rules stop applying. `BFE` cannot be restarted without a reboot, so the fix is not obvious. |
+| `appinfo` | UAC elevation fails. Nothing that needs administrator rights will start. |
+| `AppXSvc` | Store-packaged apps stop working — including third-party ones that ship that way. |
+| `pla`, `PerfHost`, `wmiApSrv` | Performance counters go missing, so perfmon and WPR record nothing. You have disabled the tools this site tells you to measure with. |
+| `WlanSvc` | No Wi-Fi. Fine on a desktop on Ethernet, until the day it is not. |
+| `CapabilityAccessManagerSvc` | Camera and microphone permission handling. Apps get denied with no prompt. |
+| Xbox services | Game Pass, cloud saves and the Xbox overlay. Microsoft's IoT table marks these **Should be disabled** — that is guidance for a kiosk, and it is exactly backwards for a gaming desktop. |
+| Anti-cheat services | The protected game refuses to launch. Vanguard, EAC and BattlEye all install as services. |
+
+That last row is the one that costs an evening: a service list disables the
+anti-cheat service, the game reports a generic error, and the tweak is three days
+back in your history.
+
 ## Services that look safe and are not
 
 Typical service-disabling lists include these. Each one is reasonable on a specific
