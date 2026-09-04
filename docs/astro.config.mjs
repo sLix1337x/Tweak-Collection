@@ -194,6 +194,7 @@ export default defineConfig({
             { label: 'Power & boot', slug: 'tweaks/power' },
             { label: 'Latency', slug: 'tweaks/latency' },
             { label: 'Services', slug: 'tweaks/services' },
+            { label: 'Service reference', slug: 'reference/service-reference' },
             { label: 'Settings outside the registry', slug: 'reference/settings-outside-the-registry' },
             { label: 'Win32PrioritySeparation, decoded', slug: 'reference/win32priorityseparation' },
           ],

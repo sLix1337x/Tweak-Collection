@@ -503,3 +503,135 @@
   line-height: 1.45;
   color: var(--sl-color-gray-4);
 }
+
+/* ------------------------------------------------------------ service table */
+
+.tc-services-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.tc-services input[type='search'] {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--tc-border);
+  border-radius: 0.4rem;
+  background: var(--tc-surface);
+  color: var(--sl-color-white);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.tc-services input[type='search']:focus-visible {
+  outline: 2px solid var(--tc-purple);
+  outline-offset: 1px;
+}
+
+.tc-services-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.tc-services-filters button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--tc-border);
+  border-radius: 0.4rem;
+  background: var(--tc-surface);
+  color: var(--sl-color-gray-2);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.tc-services-filters button span {
+  color: var(--sl-color-gray-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-services-filters button[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--tc-purple) 55%, transparent);
+  background: color-mix(in srgb, var(--tc-purple) 16%, transparent);
+  color: var(--sl-color-white);
+}
+
+.tc-services-count {
+  margin: 0 0 0.6rem;
+  color: var(--sl-color-gray-4);
+  font-size: 0.76rem;
+}
+
+/* The table is long, so the head stays put while the body scrolls. */
+.tc-service-table {
+  display: block;
+  max-height: 34rem;
+  overflow: auto;
+  border: 1px solid var(--tc-border);
+  border-radius: 0.6rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.tc-service-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--tc-surface-2);
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--sl-color-gray-3);
+  text-align: start;
+}
+
+.tc-service-table :is(th, td) {
+  border-bottom: 1px solid var(--tc-border-soft);
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+}
+
+.tc-service-table code {
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.tc-service-display {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--sl-color-gray-4);
+  font-size: 0.72rem;
+}
+
+.tc-service-startup {
+  white-space: nowrap;
+  color: var(--sl-color-gray-3);
+}
+
+.tc-verdict-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-inline-end: 0.4rem;
+  border-radius: 999px;
+  vertical-align: 0.1em;
+}
+
+.tc-verdict-safe { background: var(--tc-ok); }
+.tc-verdict-keep { background: var(--tc-bad); }
+.tc-verdict-depends { background: var(--tc-warn); }
+
+/* Where the IoT guidance and a desktop disagree. */
+.tc-service-caveat {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--tc-warn);
+  font-size: 0.75rem;
+  font-weight: 600;
+}

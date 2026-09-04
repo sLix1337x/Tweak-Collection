@@ -1,0 +1,130 @@
+---
+/**
+ * The service reference table.
+ *
+ * 260-odd rows is past what anyone reads top to bottom, so the table ships with
+ * a filter: a search box over the name and the description, and one button per
+ * verdict. Everything is rendered server-side and hidden with the `hidden`
+ * attribute, so the page works with JavaScript off — you just get all the rows.
+ */
+import services from '../data/services.json';
+
+/** Collapses the sheet's several spellings of the same verdict into three. */
+function bucket(verdict: string) {
+  const v = verdict.toLowerCase();
+  if (v.startsWith('yes')) return 'safe';
+  if (v.startsWith('no')) return 'keep';
+  return 'depends';
+}
+
+const rows = services.map((service) => ({ ...service, bucket: bucket(service.verdict) }));
+
+const counts = {
+  all: rows.length,
+  safe: rows.filter((r) => r.bucket === 'safe').length,
+  keep: rows.filter((r) => r.bucket === 'keep').length,
+  depends: rows.filter((r) => r.bucket === 'depends').length,
+  caveat: rows.filter((r) => r.desktop).length,
+};
+
+const filters = [
+  { key: 'all', label: 'All' },
+  { key: 'safe', label: 'Safe on IoT' },
+  { key: 'keep', label: 'Keep' },
+  { key: 'depends', label: 'Depends' },
+  { key: 'caveat', label: 'Desktop caveat' },
+];
+---
+
+<div class="tc-services not-content">
+  <div class="tc-services-controls">
+    <input
+      type="search"
+      id="tc-service-search"
+      placeholder="Filter by name or description…"
+      aria-label="Filter services"
+      autocomplete="off"
+    />
+    <div class="tc-services-filters" role="group" aria-label="Filter by verdict">
+      {
+        filters.map((filter) => (
+          <button type="button" data-filter={filter.key} aria-pressed={filter.key === 'all'}>
+            {filter.label} <span>{counts[filter.key as keyof typeof counts]}</span>
+          </button>
+        ))
+      }
+    </div>
+  </div>
+
+  <p class="tc-services-count" aria-live="polite"><span id="tc-service-count">{rows.length}</span> of {rows.length} services</p>
+
+  <table class="tc-service-table">
+    <thead>
+      <tr>
+        <th>Service</th>
+        <th>Default</th>
+        <th>Microsoft</th>
+        <th>What it does, and what breaks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((service) => (
+          <tr
+            data-bucket={service.bucket}
+            data-caveat={service.desktop ? 'yes' : undefined}
+            data-text={`${service.name} ${service.display} ${service.text} ${service.desktop}`.toLowerCase()}
+          >
+            <td>
+              <code>{service.name}</code>
+              <span class="tc-service-display">{service.display}</span>
+            </td>
+            <td class="tc-service-startup">{service.startup || '—'}</td>
+            <td>
+              <span class={`tc-verdict-dot tc-verdict-${service.bucket}`} />
+              {service.recommendation}
+            </td>
+            <td>
+              {service.text}
+              {service.desktop && <strong class="tc-service-caveat">On a desktop: {service.desktop}</strong>}
+            </td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const root = document.querySelector('.tc-services');
+  if (root) {
+    const search = root.querySelector<HTMLInputElement>('#tc-service-search')!;
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const rows = [...root.querySelectorAll<HTMLTableRowElement>('tbody tr')];
+    const count = root.querySelector('#tc-service-count')!;
+    let bucket = 'all';
+
+    const apply = () => {
+      const term = search.value.trim().toLowerCase();
+      let shown = 0;
+      for (const row of rows) {
+        const inBucket =
+          bucket === 'all' ||
+          (bucket === 'caveat' ? row.dataset.caveat === 'yes' : row.dataset.bucket === bucket);
+        const match = inBucket && (!term || row.dataset.text!.includes(term));
+        row.hidden = !match;
+        if (match) shown++;
+      }
+      count.textContent = String(shown);
+    };
+
+    search.addEventListener('input', apply);
+    for (const button of buttons) {
+      button.addEventListener('click', () => {
+        bucket = button.dataset.filter!;
+        for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
+        apply();
+      });
+    }
+  }
+</script>

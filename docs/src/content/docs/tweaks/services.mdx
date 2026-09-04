@@ -54,6 +54,11 @@ includes things like:
 | `BFE` (Base Filtering Engine) | Windows Firewall and IPsec stop working. Cannot be started again without a reboot. |
 | `Themes` | Breaks visual styles and, on some builds, taskbar rendering. |
 
+Every one of those appears as **OK to disable** in the table most service lists are
+quoting from — Microsoft's guidance for *IoT* devices. The full list, with that
+provenance and the rows where a desktop disagrees, is in the
+[service reference](../../reference/service-reference/).
+
 A modern Windows service that is idle costs approximately nothing. `svchost`
 processes sitting at 0% CPU with a few megabytes of paged-out working set are not
 what is slowing your machine down. The measurable wins are elsewhere — power
