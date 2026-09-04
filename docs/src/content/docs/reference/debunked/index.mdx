@@ -1,0 +1,87 @@
+---
+title: Debunked & rejected
+description: Popular Windows tweaks that do nothing, no longer exist, or make something worse — grouped by subsystem, with the reason for each verdict.
+sidebar:
+  order: 0
+  label: Overview
+tags:
+  - debunked
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Forty-odd tweaks that circulate widely and do not survive checking. Each entry
+names what the tweak claims to do, what it does instead, and where that can be
+verified.
+
+They are grouped by the subsystem they claim to touch, because almost nothing here
+is worth reading end to end. Go to the section that matches whatever you were about
+to apply.
+
+<CardGrid>
+  <LinkCard
+    title="Scheduler, timers and CPU power"
+    href="scheduler/"
+    description="Quantum tweaks, HPET, dynamic tick, the MMCSS values nothing reads, input queue sizes."
+  />
+  <LinkCard
+    title="Network"
+    href="network/"
+    description="netsh commands removed from Windows, adapter keywords written blind, values outside their own valid range."
+  />
+  <LinkCard
+    title="NVIDIA"
+    href="nvidia/"
+    description="The RM* registry values that fill GPU tweak scripts, and what each one actually does."
+  />
+  <LinkCard
+    title="Storage and memory"
+    href="storage-and-memory/"
+    description="Queue depths, pool limits, the prefetcher, memory compression."
+  />
+  <LinkCard
+    title="Services and system"
+    href="services-and-system/"
+    description="Service-disabling lists, registry cleaners, one-click debloaters, the page file."
+  />
+</CardGrid>
+
+## What the verdicts mean
+
+| Verdict | Meaning |
+| --- | --- |
+| <span class="tc-verdict tc-verdict-invalid">Invalid</span> | Writes a value the system does not accept, or calls something that no longer exists. Does nothing, silently. |
+| <span class="tc-verdict tc-verdict-placebo">Placebo</span> | A real setting with no measurable effect. |
+| <span class="tc-verdict tc-verdict-harmful">Harmful</span> | Measurably makes something worse. |
+| <span class="tc-verdict tc-verdict-situational">Situational</span> | Can help on specific hardware, but not as a blanket recommendation. |
+| <span class="tc-verdict tc-verdict-situational">Unproven</span> | Real, read by the system, and it does change behaviour. What is missing is evidence that any particular value is an improvement. |
+| <span class="tc-verdict tc-verdict-invalid">Superseded</span> | Not wrong, but a documented setting does the same job and reverts cleanly. |
+
+## Why the list is this long
+
+Almost every entry here is one of three things.
+
+**Correct advice for an older Windows.** The setting was real on Windows 7 or
+Windows 10, the guide was accurate when it was written, and nobody went back to
+re-check it against a current build. TCP Chimney Offload and `IoPageLockLimit` are
+the clearest cases: both were genuine, both are gone.
+
+**A real setting with an unproven benefit.** The value exists, the system reads it,
+and it does change behaviour — but no measurement shows the change is an
+improvement. `Win32PrioritySeparation` is the canonical example. These are marked
+**Unproven** rather than Placebo, because "nothing measurable has been shown" and
+"nothing happens" are different claims, and only the first one is defensible.
+
+**A value copied wrong, then copied again from the copy.** `TcpAckFrequency = 0`
+is not in the key's valid range. `*EEE = 1` enables the feature that the comment
+above it claims to disable. Both appear in hundreds of scripts.
+
+The failure mode that keeps all three alive is that Windows does not complain.
+`Set-ItemProperty` writes any name you give it, the value appears in `regedit`, and
+nothing reads it. Checking a value against
+[the binary that would read it](../../guides/reading-the-binary/) takes about thirty
+seconds and rules out an entire category of these.
+
+The defence against the other two is the same in both cases: know the mechanism,
+check the Windows version, measure the result. That is what
+[how a tweak earns its place](../../start/method/) is for.

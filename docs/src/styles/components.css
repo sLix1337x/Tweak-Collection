@@ -1,0 +1,505 @@
+/*
+  Site-specific components: the hero, the terminal mock, risk/evidence badges,
+  stat rows and card polish.
+*/
+
+/* --------------------------------------------------------------------- hero */
+
+.tc-hero {
+  position: relative;
+  display: grid;
+  gap: 3rem;
+  align-items: center;
+  padding: clamp(1.5rem, 4.5vw, 3.2rem) 0 clamp(1.25rem, 3vw, 2.25rem);
+}
+
+@media (min-width: 60rem) {
+  .tc-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 3.5rem;
+  }
+}
+
+/* Soft brand glow behind the hero, clipped to the viewport. */
+.tc-hero::before {
+  content: '';
+  position: absolute;
+  inset: -30% -20% auto -20%;
+  height: 34rem;
+  background: radial-gradient(
+    50% 50% at 30% 40%,
+    color-mix(in srgb, var(--tc-purple) 9%, transparent),
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.tc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.5rem;
+  border: 1px solid var(--tc-border);
+  border-radius: 999px;
+  background: var(--tc-surface);
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: var(--sl-color-gray-2);
+  letter-spacing: 0.01em;
+}
+
+.tc-eyebrow .tc-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--tc-ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tc-ok) 22%, transparent);
+}
+
+.tc-hero h1 {
+  margin: 1.25rem 0 0;
+  font-size: clamp(2rem, 4.6vw, 2.9rem);
+  line-height: 1.05;
+  letter-spacing: -0.038em;
+  font-weight: 700;
+  color: var(--sl-color-white);
+}
+
+.tc-hero h1 .tc-grad {
+  background: var(--tc-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tc-hero .tc-tagline {
+  margin-top: 1rem;
+  max-width: 34rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--sl-color-gray-2);
+}
+
+.tc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.tc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 0.6rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.tc-btn:hover {
+  transform: translateY(-1px);
+}
+
+.tc-btn-primary {
+  background: var(--tc-gradient);
+  color: #0e1017;
+  box-shadow: 0 10px 30px -14px color-mix(in srgb, var(--tc-purple) 80%, transparent);
+}
+
+.tc-btn-primary:hover {
+  box-shadow: 0 14px 34px -12px color-mix(in srgb, var(--tc-purple) 85%, transparent);
+}
+
+.tc-btn-ghost {
+  background: var(--tc-surface);
+  border-color: var(--tc-border);
+  color: var(--sl-color-white);
+}
+
+.tc-btn-ghost:hover {
+  background: var(--tc-surface-2);
+}
+
+/* ----------------------------------------------------------- terminal mock */
+
+.tc-term {
+  border: 1px solid var(--tc-border);
+  border-radius: 0.85rem;
+  background: var(--tc-surface);
+  box-shadow: var(--tc-glow);
+  overflow: hidden;
+}
+
+.tc-term-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--tc-border-soft);
+  background: var(--tc-surface-2);
+}
+
+.tc-term-bar i {
+  width: 0.66rem;
+  height: 0.66rem;
+  border-radius: 999px;
+  background: var(--sl-color-gray-5);
+}
+
+.tc-term-bar i:nth-child(1) { background: #ff5f57; }
+.tc-term-bar i:nth-child(2) { background: #febc2e; }
+.tc-term-bar i:nth-child(3) { background: #28c840; }
+
+.tc-term-bar span {
+  margin-inline-start: 0.5rem;
+  font-family: var(--sl-font-mono);
+  font-size: 0.72rem;
+  color: var(--sl-color-gray-3);
+}
+
+.tc-term pre {
+  margin: 0;
+  padding: 0.9rem 1rem 1.1rem;
+  overflow-x: auto;
+  font-family: var(--sl-font-mono);
+  font-size: clamp(0.56rem, 1.15vw, 0.72rem);
+  line-height: 1.5;
+  color: var(--sl-color-gray-2);
+  background: transparent;
+  tab-size: 4;
+}
+
+.tc-term .b { color: color-mix(in srgb, var(--tc-purple) 70%, var(--sl-color-gray-4)); }
+.tc-term .hd { color: var(--tc-purple); font-weight: 600; }
+.tc-term .on { color: var(--tc-ok); }
+.tc-term .warn { color: var(--tc-warn); }
+.tc-term .sel { color: var(--tc-purple); }
+.tc-term .dim { color: var(--sl-color-gray-4); }
+.tc-term .cur {
+  background: color-mix(in srgb, var(--sl-color-accent) 26%, transparent);
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------- stat row */
+
+.tc-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1px;
+  margin: 2.25rem 0;
+  border: 1px solid var(--tc-border);
+  border-radius: 0.8rem;
+  background: var(--tc-border);
+  overflow: hidden;
+}
+
+.tc-stat {
+  padding: 1rem 1.05rem;
+  background: var(--sl-color-bg);
+}
+
+.tc-stat b {
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  background: var(--tc-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tc-stat span {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--sl-color-gray-3);
+}
+
+/* ------------------------------------------------------------------ badges */
+
+.tc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0 0 1.4rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--tc-border);
+  border-radius: 0.6rem;
+  background: var(--tc-surface);
+  font-size: 0.76rem;
+  box-shadow: 0 8px 24px -24px rgb(0 0 0 / 0.7);
+}
+
+.tc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--tc-border);
+  background: var(--tc-surface-2);
+  font-weight: 600;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.tc-badge::before {
+  content: '';
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.tc-badge-low { color: var(--tc-ok); border-color: color-mix(in srgb, var(--tc-ok) 35%, transparent); }
+.tc-badge-medium { color: var(--tc-warn); border-color: color-mix(in srgb, var(--tc-warn) 35%, transparent); }
+.tc-badge-high { color: var(--tc-bad); border-color: color-mix(in srgb, var(--tc-bad) 35%, transparent); }
+
+.tc-badge-plain {
+  color: var(--sl-color-gray-2);
+  font-weight: 550;
+}
+
+.tc-meta .tc-badge-plain {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.tc-badge-plain::before {
+  display: none;
+}
+
+.tc-meta .tc-key {
+  color: var(--sl-color-gray-4);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 650;
+}
+
+/* ------------------------------------------------------------- tweak index */
+
+.tc-index caption {
+  caption-side: top;
+  padding: 0 0 0.6rem;
+  text-align: start;
+  color: var(--sl-color-gray-3);
+  font-size: 0.8rem;
+}
+
+/* One header row per page, so the table reads as the sidebar does. */
+.sl-markdown-content .tc-index-group th {
+  background: color-mix(in srgb, var(--tc-purple) 18%, var(--tc-surface-2));
+  color: var(--sl-color-white);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
+.sl-markdown-content .tc-index td:first-child {
+  font-weight: 550;
+}
+
+/* A stable link target per tweak, sitting just above its heading.
+
+   A heading's own anchor is slugged from its text, so every reworded heading
+   breaks the links pointing at it. This one is the tweak ID, which does not
+   change. The negative scroll margin cancels the heading's own top margin and
+   divider padding, so following #net.nagle lands on the heading rather than a
+   screen above it — Starlight already offsets targets by the header height. */
+.tc-anchor {
+  display: block;
+  height: 0;
+  scroll-margin-top: -3.75rem;
+}
+
+/* Inline risk words inside prose and tables. */
+.risk-low { color: var(--tc-ok); font-weight: 650; }
+.risk-medium { color: var(--tc-warn); font-weight: 650; }
+.risk-high { color: var(--tc-bad); font-weight: 650; }
+
+/* -------------------------------------------------------------------- cards */
+
+.card {
+  border-radius: 0.8rem;
+  border-color: var(--tc-border);
+  background: var(--tc-surface);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--tc-purple) 45%, var(--tc-border));
+  transform: translateY(-1px);
+  box-shadow: var(--tc-glow);
+}
+
+.card .icon {
+  color: var(--tc-purple);
+}
+
+.card .title {
+  letter-spacing: -0.015em;
+}
+
+.sl-link-card {
+  border-radius: 0.8rem;
+  border-color: var(--tc-border);
+  background: var(--tc-surface);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sl-link-card:hover {
+  border-color: color-mix(in srgb, var(--tc-purple) 45%, var(--tc-border));
+  transform: translateY(-1px);
+  box-shadow: var(--tc-glow);
+}
+
+/* --------------------------------------------------------------- verdicts */
+
+/* Used on the debunked pages so a verdict reads at a glance: a pill under every
+   heading, and the same colours inline in the legend table. */
+.tc-verdict {
+  display: inline-block;
+  padding: 0.15em 0.65em;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sl-markdown-content .tc-verdict-row {
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.tc-verdict-invalid { color: var(--sl-color-gray-3); }
+.tc-verdict-placebo { color: var(--tc-warn); }
+.tc-verdict-harmful { color: var(--tc-bad); }
+.tc-verdict-situational { color: var(--tc-purple); }
+
+/* ----------------------------------------------------------------- colophon */
+
+.tc-colophon {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--tc-border-soft);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--sl-color-gray-3);
+}
+
+.tc-colophon a {
+  color: var(--sl-color-gray-2);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-color: var(--tc-border);
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.tc-colophon a:hover {
+  color: var(--tc-purple);
+  text-decoration-color: currentColor;
+}
+
+@media (max-width: 40rem) {
+  .tc-meta {
+    gap: 0.4rem;
+    padding: 0.7rem;
+  }
+
+  .tc-meta .tc-key {
+    flex-basis: 100%;
+    margin-top: 0.15rem;
+  }
+
+  .tc-meta .tc-key:first-child {
+    margin-top: 0;
+  }
+}
+
+/* ------------------------------------------------------- collection preview */
+
+.tc-collection {
+  border: 1px solid var(--tc-border);
+  border-radius: 0.9rem;
+  background: var(--tc-surface);
+  box-shadow: var(--tc-glow);
+  overflow: hidden;
+}
+
+.tc-collection-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--tc-border-soft);
+  background: var(--tc-surface-2);
+}
+
+.tc-collection-head strong {
+  font-size: 0.85rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--sl-color-white);
+}
+
+.tc-collection-head span {
+  font-size: 0.75rem;
+  color: var(--sl-color-gray-3);
+}
+
+.tc-collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 1px;
+  background: var(--tc-border-soft);
+}
+
+.tc-cat {
+  display: block;
+  padding: 0.95rem 1.1rem;
+  background: var(--tc-surface);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.tc-cat:hover {
+  background: var(--tc-surface-2);
+}
+
+.tc-cat b {
+  display: block;
+  font-family: var(--sl-font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--tc-purple);
+}
+
+.tc-cat span {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--sl-color-gray-3);
+}
+
+.tc-cat em {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.7rem;
+  font-style: normal;
+  line-height: 1.45;
+  color: var(--sl-color-gray-4);
+}

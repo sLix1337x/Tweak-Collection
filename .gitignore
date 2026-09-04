@@ -1,0 +1,16 @@
+# Node / Astro
+node_modules/
+dist/
+.astro/
+.DS_Store
+
+# Local tweak state - never commit a machine backup
+backup.json
+*.backup.json
+
+# Binaries do not belong in this repo. Download tools from the vendor.
+*.exe
+*.msi
+*.zip
+*.7z
+docs/local-windows11-gaming-audit.md

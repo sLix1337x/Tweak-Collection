@@ -1,0 +1,12 @@
+Windows Registry Editor Version 5.00
+
+; Removes the value again. The driver falls back to its default (no legacy
+; sharpening option) on the next boot.
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services
+vlddmkm\Parameters\FTS]
+"EnableGR535"=-
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services
+vlddmkm\FTS]
+"EnableGR535"=-

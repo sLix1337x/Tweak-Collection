@@ -1,0 +1,166 @@
+---
+title: Latency & scheduling
+description: Game DVR, MMCSS, network throttling and the scheduler settings that actually matter.
+sidebar:
+  order: 2
+tags:
+  - latency
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Four values, all documented, all verified present in the driver that reads them.
+The scheduler
+folklore that used to sit next to them — quantum lengths, input queue sizes, timer
+tricks — is on the [debunked page](../../reference/debunked/) instead.
+
+<span id="latency.gamedvr-off" class="tc-anchor" />
+
+## Game DVR and background recording — latency.gamedvr-off
+
+<TweakMeta risk="Low" evidence="Documented / Measurable" reboot={false} />
+
+Background recording keeps a rolling encode of whatever is in the foreground so
+that "record the last 30 seconds" works. It is on by default, it uses the GPU's
+encoder, and the cost shows up in frame-time captures as periodic spikes rather
+than a lower average.
+
+This is a capture-overhead reduction, not a guaranteed FPS or 1% low increase.
+It is most defensible when you never use Game Bar recording.
+
+```text
+HKCU\System\GameConfigStore\GameDVR_Enabled = 0
+HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR\AllowGameDVR = 0
+```
+
+The HKCU half is per-user. If you have several accounts on the machine, apply it
+from each of them; the `HKLM` policy value covers the machine regardless.
+
+:::note[Game Bar itself still works]
+This disables capture, not the overlay. Shift+G still opens the Game Bar for
+performance counters and audio mixing.
+:::
+
+<span id="latency.network-throttling-off" class="tc-anchor" />
+
+## Multimedia network throttling — latency.network-throttling-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={true} />
+
+Windows deliberately throttles non-multimedia network packet processing to roughly
+ten packets per millisecond whenever any multimedia application is running, so that
+audio and video playback cannot be starved by a download. Microsoft documented this
+in KB 2483177.
+
+Some games or companion components may use multimedia scheduling, but this setting
+does not lower server ping and has no reason to help ordinary UDP games. It removes
+a packet-processing cap intended to protect multimedia workloads.
+
+```text
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile
+  NetworkThrottlingIndex = 0xFFFFFFFF   (disabled; default is 10)
+```
+
+**What it costs:** on a CPU-starved system, audio glitching under heavy network
+load. If you are on four cores and you hear crackle after applying this, revert it.
+
+<span id="latency.system-responsiveness" class="tc-anchor" />
+
+## MMCSS background reservation — latency.system-responsiveness
+
+<TweakMeta risk="Low" evidence="Documented" reboot={true} />
+
+`SystemResponsiveness` is the percentage of CPU time the Multimedia Class Scheduler
+guarantees to *non*-multimedia background work. The default is 20. The script sets
+10, which gives multimedia and game threads more of the machine while still leaving
+background work a slice.
+
+```text
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile
+  SystemResponsiveness = 10   (default 20)
+```
+
+:::caution[Do not set this to 0 — it is not the value you think it is]
+Zero is what every tweak list recommends, and it does not do what they say.
+
+The value is **rounded down to a multiple of 10**, and anything **below 10 or above
+100 is treated as 20**. So `0` and `5` both land you back on the default you were
+trying to beat, while you believe you removed the reservation entirely. `100`
+disables MMCSS outright — registrations fail with `STATUS_SERVER_DISABLED`.
+
+`10` is the floor that actually exists. That is why the script uses it.
+:::
+
+<span id="latency.mmcss-games" class="tc-anchor" />
+
+## MMCSS Games task profile — latency.mmcss-games
+
+<TweakMeta risk="Low" evidence="Documented / Verified in mmcss.sys" reboot={true} />
+
+Applications that register with MMCSS under the "Games" task get scheduled
+according to this profile. Raising it moves those threads from the Medium
+scheduling category into High.
+
+```text
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games
+  Scheduling Category  = "High"   (default "Medium")
+```
+
+One value, where this used to write four.
+
+:::danger[This tweak used to be three-quarters inert, including here]
+The version of this page before September 2026 also set `GPU Priority = 8`,
+`Priority = 6` and `SFIO Priority = "High"`, because that is what every MMCSS guide
+recommends. Dumping the value names out of the driver that reads them settles it:
+
+```powershell
+$b = [IO.File]::ReadAllBytes('C:\Windows\System32\drivers\mmcss.sys')
+$u = [Text.Encoding]::Unicode.GetString($b)
+'Scheduling Category','Priority','GPU Priority','SFIO Priority' |
+  ForEach-Object { '{0,-20} {1}' -f $_, ($u.IndexOf($_, [StringComparison]::Ordinal) -ge 0) }
+```
+
+On build 10.0.26100.8968, `GPU Priority` and `SFIO Priority` **are not in the binary
+at all** — Microsoft's own documentation has said "this priority is not yet used"
+and "this value is not used" for years, and the driver agrees. `Priority` is real,
+but it is **ignored whenever `Scheduling Category` is `High`**, where every task is
+treated as `2`.
+
+So of the four values, one did anything. The other three are on the
+[debunked page](../../reference/debunked/scheduler/#mmcss-gpu-priority-and-sfio-priority--invalid).
+:::
+
+**Honest caveat, which is the bigger one:** MMCSS is **opt-in**. It reaches only
+processes that call `AvSetMmThreadCharacteristics` from `avrt.dll` with the "Games"
+task, and many modern engines never do. One command retires the whole question for a
+given title:
+
+```powershell
+$exe = 'C:\Path\To\Game.exe'
+$s = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe))
+'avrt.dll','AvSetMmThreadCharacteristics' | Where-Object { $s -match [regex]::Escape($_) }
+```
+
+No match means the `Tasks\Games` key is inert for that game no matter what you put
+in it. When it does apply it is real; when it does not it costs nothing, which is
+why it stays in the list.
+
+:::caution[Never restart the MMCSS service to apply this]
+Since Windows 10 MMCSS is a kernel driver, not a svchost service, and it caches task
+profiles at load — so these changes need a **reboot**, and there is no way around
+it. Registered threads hold references to the driver, so a stop request never
+completes: the service parks in `STOP_PENDING`, the next start fails with `1056`,
+and **new MMCSS registrations fail machine-wide until you reboot — audio included.**
+
+Change the registry, reboot. Do not touch the service.
+:::
+
+## What is left out
+
+Mouse and keyboard `DataQueueSize`, HPET and dynamic tick, and the "long quantum"
+scheduler advice that travels with them are all on the
+[debunked page](../../reference/debunked/) with an explanation of what each one
+actually does. `Win32PrioritySeparation` gets
+[its own page](../../reference/win32priorityseparation/), because every guide
+recommends a value for it and none of them say what the value means.

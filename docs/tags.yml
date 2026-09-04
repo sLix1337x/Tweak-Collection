@@ -1,0 +1,80 @@
+# Cross-cutting tags for the collection. A page's category says where it lives;
+# these say what it is about, so "everything touching anti-cheat" is one click.
+tags:
+  latency:
+    label: Latency
+    description: Input, frame-time and DPC latency — the things you feel rather than benchmark.
+    color: '#9d7bf0'
+    priority: 10
+
+  measurement:
+    label: Measurement
+    description: How to tell a real improvement from a placebo.
+    color: '#7c8cf8'
+    priority: 8
+
+  anti-cheat:
+    label: Anti-cheat
+    description: Settings that can stop a protected game launching. Worth reading before applying.
+    color: '#fb7185'
+    priority: 6
+
+  power:
+    label: Power
+    description: Power plans, link-state management and idle behaviour.
+    color: '#b18cf5'
+
+  network:
+    label: Network
+    description: NIC properties, TCP behaviour and adapter power management.
+    color: '#7c8cf8'
+
+  privacy:
+    label: Privacy
+    description: Telemetry, identifiers, and the services that ship them.
+    color: '#9d7bf0'
+
+  services:
+    label: Services
+    description: What is safe to disable, and what only looks safe.
+    color: '#b18cf5'
+
+  nvidia:
+    label: NVIDIA
+    description: Driver installs, MSI mode, and the registry keys that did not survive.
+    color: '#4ade80'
+
+  drivers:
+    label: Drivers
+    description: Getting drivers on cleanly, and keeping them that way.
+    color: '#4ade80'
+
+  bios:
+    label: BIOS
+    description: Firmware settings, and which of them have to be right before Windows goes on.
+    color: '#fbbf24'
+
+  registry:
+    label: Registry
+    description: Pages that write registry values, and the defaults to put back.
+    color: '#8e97a6'
+
+  input:
+    label: Input
+    description: Mouse, keyboard and the USB path they arrive on.
+    color: '#7787f6'
+
+  audio:
+    label: Audio
+    description: Playback format, the mixer, and the DPC latency that breaks it.
+    color: '#c084fc'
+
+  security:
+    label: Security
+    description: VBS, Secure Boot, TPM — what they cost and what anti-cheat requires.
+    color: '#fbbf24'
+
+  debunked:
+    label: Debunked
+    description: Tried, measured, and thrown out.
+    color: '#fb7185'

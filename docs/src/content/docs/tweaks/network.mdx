@@ -1,0 +1,143 @@
+---
+title: Network
+description: Delayed ACK, adapter power management, Energy Efficient Ethernet and interrupt moderation.
+sidebar:
+  order: 3
+tags:
+  - network
+  - latency
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Network tweaking attracts more nonsense than any other category. Most of what
+circulates comes from Windows XP-era guides and either no longer applies, no longer
+parses, or was never true.
+
+The rule here: touch only properties the adapter's own driver advertises, and never
+write a value blindly into every adapter's registry key.
+
+<span id="net.nagle" class="tc-anchor" />
+
+## Delayed ACK and Nagle's algorithm — net.nagle
+
+<TweakMeta risk="Medium" evidence="Documented / Situational" reboot={true} />
+
+Nagle's algorithm buffers small outgoing TCP segments to avoid flooding the network
+with tiny packets. Delayed ACK holds acknowledgements for up to 200 ms hoping to
+piggyback them on outgoing data. Together they add latency to exactly the traffic
+pattern games produce: small packets, sent constantly, never filling a buffer.
+
+```text
+HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{GUID}
+  TcpAckFrequency = 1   (acknowledge every segment immediately)
+  TCPNoDelay      = 1   (disable Nagle)
+```
+
+The script writes these only to adapters that are currently **Up**, and captures
+whatever was there first.
+
+:::caution[The value that is everywhere and is wrong]
+Countless guides write `TcpAckFrequency = 0`. Microsoft documents `0` as not valid
+and treated as the default of `2`, so you get default behaviour while believing you
+changed something. The value is a count of outstanding ACKs before the delayed-ACK
+timer is ignored, and `1` is the one that acknowledges every segment.
+:::
+
+**Where it does nothing:** games that use UDP, which is most competitive shooters
+including CS2, Valorant and Overwatch. TCP settings do not touch UDP traffic. This
+tweak helps on TCP-based games and on TCP application traffic generally; it will
+not lower your in-game ping in a UDP title.
+
+**What it costs:** slightly more packets on the wire. Irrelevant on a home
+connection.
+
+<span id="net.adapter-powersave-off" class="tc-anchor" />
+
+## Adapter power management — net.adapter-powersave-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+Clears **Allow the computer to turn off this device to save power** on every
+physical NIC. When Windows powers a NIC down and back up, the link renegotiates —
+a one to three second network stall in the middle of whatever you were doing.
+
+```powershell
+Disable-NetAdapterPowerManagement -Name '*'
+```
+
+The script bounces the adapter afterwards so the change takes effect without a
+reboot, and skips that bounce entirely if it detects an RDP session, so it cannot
+cut the connection it is running over.
+
+<span id="net.eee-off" class="tc-anchor" />
+
+## Energy Efficient Ethernet and flow control — net.eee-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+**EEE (802.3az)** idles the PHY between frames and takes time to wake it — the
+standard's wake budget is on the order of 16.5 µs for 1000BASE-T. Real,
+measurable, and far below anything you will feel in a game.
+
+**Flow control (802.3x)** lets the switch send PAUSE frames that stop your NIC
+transmitting temporarily. Turning it off is a judgement call rather than a
+documented fix: no Microsoft or Intel guidance recommends disabling it on a
+desktop, and it exists to prevent loss on a link that actually saturates. The
+[full argument](../../guides/network-adapter-settings/#flow-control) is on the
+adapter settings page.
+
+```powershell
+Set-NetAdapterAdvancedProperty -Name '*' -RegistryKeyword '*EEE' -RegistryValue 0
+Set-NetAdapterAdvancedProperty -Name '*' -RegistryKeyword '*FlowControl' -RegistryValue 0
+```
+
+Not every driver exposes these. The script queries each adapter for the keyword
+first and skips adapters that do not advertise it. Intel drivers name the EEE
+switch `AdvancedEEE`, so the script tries that keyword as well.
+
+:::caution[The value in circulation is backwards]
+The `optimize_network.bat` scripts this replaces write `*EEE = 1` and
+`*FlowControl = 1` under a comment claiming to deactivate them. `1` enables them, so
+a script run to lower latency raises it very slightly instead.
+:::
+
+<span id="net.interrupt-moderation-off" class="tc-anchor" />
+
+## Interrupt moderation — net.interrupt-moderation-off
+
+<TweakMeta risk="Medium" evidence="Documented / Situational" reboot={false} />
+
+Interrupt moderation batches received packets and raises one interrupt for the
+batch instead of one per packet. Turning it off means every packet interrupts the
+CPU immediately: lower latency, higher CPU load and higher interrupt rate.
+
+This is a genuine trade, not a free win.
+
+**Turn it off if:** you have plenty of CPU headroom, you are chasing input-to-photon
+latency, and your traffic is small packets.
+
+**Leave it on if:** you have a low core count, you saturate a 2.5G or 10G link, or
+you see CPU usage climb after applying it.
+
+Measure before and after with `Get-NetAdapterStatistics` and LatencyMon. If you
+cannot see a difference, leave the default. It is a reasonable experiment on a
+high-core-count desktop with latency-sensitive small-packet traffic, and a poor
+blanket recommendation for a low-core-count or throughput-heavy machine.
+
+## The rest of the Advanced tab
+
+The four tweaks above are the ones this collection changes. They are not the whole
+tab: RSS, the checksum and segmentation offloads, jumbo frames, buffers, Priority &
+VLAN and the wake properties are all sitting there too, and the usual advice about
+them is to turn them off, which is wrong for most of them.
+
+[Network adapter settings](../../guides/network-adapter-settings/) goes through
+every property, what the default is, and which ones are worth touching. Read it
+before changing anything on that tab — particularly if a script has been there
+before you.
+
+The specific values that are wrong rather than merely unnecessary — `*RSS = 0`,
+buffers set to `0`, a forced MTU of 1458, `netsh int tcp set global chimney=disabled` —
+are on [debunked: network](../../reference/debunked/network/) with the reasons.

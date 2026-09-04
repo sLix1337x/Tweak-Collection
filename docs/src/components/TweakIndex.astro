@@ -1,0 +1,86 @@
+---
+/**
+ * Every tweak in one table.
+ *
+ * The rows are read out of the tweak pages themselves at build time rather than
+ * kept in a list here, because a second list is a list that goes stale. A tweak
+ * is a heading ending in its ID, followed by a `<TweakMeta>`:
+ *
+ *   ## Ultimate Performance power plan — power.ultimate
+ *   <TweakMeta risk="Low" evidence="Documented" reboot={false} />
+ */
+const pages = import.meta.glob('../content/docs/tweaks/*.mdx', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+
+const headingRe = /^## (?:(.*) — )?([a-z]+\.[a-z0-9-]+)[ \t]*$/gm;
+const metaRe = /<TweakMeta\s+risk="([^"]+)"\s+evidence="([^"]+)"\s+reboot=\{(true|false)\}/;
+
+const categories = Object.entries(pages)
+  .map(([path, raw]) => {
+    const source = raw as string;
+    const slug = path.split('/').pop()!.replace(/\.mdx$/, '');
+
+    const tweaks = [...source.matchAll(headingRe)].map((match) => {
+      const meta = source.slice(match.index! + match[0].length).match(metaRe);
+      return {
+        // Headings that are only an ID (`## bloat.services`) have no prose half.
+        name: match[1] ?? match[2],
+        id: match[2],
+        href: `${import.meta.env.BASE_URL}/tweaks/${slug}/#${match[2]}`.replace(/\/{2,}/g, '/'),
+        risk: meta?.[1] ?? 'Unknown',
+        evidence: meta?.[2] ?? 'Unknown',
+        reboot: meta?.[3] === 'true',
+      };
+    });
+
+    return {
+      title: source.match(/^title: (.+)$/m)?.[1] ?? slug,
+      order: Number(source.match(/^\s+order: (\d+)$/m)?.[1] ?? 99),
+      tweaks,
+    };
+  })
+  .filter((category) => category.tweaks.length > 0)
+  .sort((a, b) => a.order - b.order);
+
+const total = categories.reduce((sum, category) => sum + category.tweaks.length, 0);
+---
+
+<table class="tc-index">
+  <caption>{total} tweaks across {categories.length} pages</caption>
+  <thead>
+    <tr>
+      <th>Tweak</th>
+      <th>ID</th>
+      <th>Risk</th>
+      <th>Evidence</th>
+      <th>Reboot</th>
+    </tr>
+  </thead>
+  {
+    categories.map((category) => (
+      <tbody>
+        <tr class="tc-index-group">
+          <th colspan="5" scope="colgroup">
+            {category.title}
+          </th>
+        </tr>
+        {category.tweaks.map((tweak) => (
+          <tr>
+            <td>
+              <a href={tweak.href}>{tweak.name}</a>
+            </td>
+            <td>
+              <code>{tweak.id}</code>
+            </td>
+            <td class={`risk-${tweak.risk.toLowerCase()}`}>{tweak.risk}</td>
+            <td>{tweak.evidence}</td>
+            <td>{tweak.reboot ? 'Yes' : '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    ))
+  }
+</table>

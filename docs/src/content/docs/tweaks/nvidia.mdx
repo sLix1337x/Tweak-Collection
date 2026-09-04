@@ -1,0 +1,184 @@
+---
+title: NVIDIA
+description: MSI mode, telemetry tasks, and why every RM* registry value was removed.
+sidebar:
+  order: 6
+tags:
+  - nvidia
+  - latency
+  - registry
+  - anti-cheat
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Two tweaks survive here, out of the twenty-odd registry values a typical NVIDIA
+tweak script writes. The rejected ones are the more useful part of this page.
+
+<span id="nvidia.msi-mode" class="tc-anchor" />
+
+## Message Signalled Interrupts — nvidia.msi-mode
+
+<TweakMeta risk="Medium" evidence="Documented / Measurable" reboot={true} />
+
+PCI devices can raise interrupts two ways. **Line-based** interrupts use shared
+physical IRQ lines, so the OS has to poll every device on the line to find out who
+signalled. **MSI** lets the device write its own interrupt vector directly, with no
+sharing and no polling.
+
+Most modern GPUs support MSI. Not all of them have it enabled by default, and NVIDIA
+driver installs have historically reset it back to line-based.
+
+```text
+HKLM\SYSTEM\CurrentControlSet\Enum\PCI\<device>\Device Parameters\Interrupt Management\MessageSignaledInterruptProperties
+  MSISupported = 1
+```
+
+This is one of the few interrupt-related tweaks with a plausible, reproducible
+mechanism. On systems using line-based interrupts it may reduce interrupt/DPC
+overhead; it is not a guaranteed frame-time improvement.
+
+:::caution[Check after every driver update]
+NVIDIA driver installs can reset this value. Re-check `MSISupported` after
+updating your driver.
+:::
+
+:::danger[The one thing here that can stop a boot]
+On rare hardware and chipset combinations, MSI mode causes a black screen at boot.
+If that happens, boot into Safe Mode and revert — see
+[undoing a tweak](../../reference/undoing-a-tweak/#if-the-machine-will-not-boot).
+:::
+
+**Interrupt priority:** some tools also let you set `DevicePriority` to raise the
+GPU's interrupt priority to High. This has no reproducible benefit and a real
+history of causing instability. The script does not touch it.
+
+<span id="nvidia.telemetry-tasks" class="tc-anchor" />
+
+## Scheduled tasks — nvidia.telemetry-tasks
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+NVIDIA installs scheduled tasks for crash reporting, telemetry monitoring, update
+polling and profile updating. They run on timers and at logon.
+
+The script matches them by name pattern:
+
+```text
+NvTmRep*  NvTmMon*  NvDriverUpdate*  NVIDIA GeForce Experience*
+NvProfileUpdater*  NvNodeLauncher*
+```
+
+The scripts in circulation disable these by full name including a hardcoded GUID
+(`{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8}`). That GUID belonged to one particular
+GeForce Experience install on one machine. Once GeForce Experience was replaced by
+the NVIDIA App in 2024 the task names changed, and every one of those `schtasks`
+calls began failing silently — the scripts redirect all output to `nul`, so they
+report success either way.
+
+**What it costs:** no automatic driver-update notifications. Check for drivers
+manually, which you should be doing anyway.
+
+## The RM* block, in full
+
+The widely circulated GPU tweak scripts write twenty-two undocumented values into
+the display driver's class key, after prompting for a GPU class GUID by hand. Here
+is what they are, and why none of them survive checking.
+
+### The HDCP block
+
+```text
+RMHdcpKeyglobZero = 1
+RmDisableHdcp22   = 1
+RMSkipHdcp22Init  = 1
+```
+
+These disable HDCP, the copy protection handshake on your display output. This does
+not improve performance. What it does do is break protected content playback:
+Netflix, Disney+, Amazon Prime Video and any other DRM-protected stream drop to a
+low resolution or refuse to play.
+
+A browser suddenly playing protected video at a much lower resolution is the usual
+first symptom.
+
+### The clock-gating block
+
+```text
+RMElcg = 0x55555555   RMBlcg = 0x11111111   RMSlcg = 0x3FFF3
+RMElpg = 0xFFF        RMElpgStateOnInit = 3  RMFspg = 5
+```
+
+Engine-level, block-level and second-level clock gating controls, plus engine-level
+power gating. These are internal NVIDIA driver debug knobs. The bit patterns circulating
+in tweak scripts are copied from forum posts, not derived from anything — nobody
+posting them can say which bit corresponds to which engine.
+
+Disabling clock gating keeps parts of the GPU powered that would otherwise idle.
+The result is more heat and more power draw. Since modern GPUs boost based on
+thermal and power headroom, spending both on idle engines can *lower* your achieved
+clocks under load.
+
+### The bandwidth block
+
+```text
+RMBandwidthFeature  = 1896072192
+RMBandwidthFeature2 = 1
+```
+
+1896072192 is `0x71007100`. It is a bit field for an undocumented internal feature.
+There is no source for what it does, no measurement showing it does anything, and
+no reason to believe the value is even valid on current driver branches.
+
+### The ASPM and power block
+
+```text
+RMEnableASPMAtLoad = 0        RMEnableASPMDT = 0
+RMDisableGpuASPMFlags = 1     RmOverrideSupportChipsetAspm = 0
+RMDeepL1EntryLatencyUsec = 1  RmMIONoPowerOff = 1
+DisableDynamicPstate = 1      EnableMClkSlowdown = 0
+RMPcieLtrOverride = 2
+```
+
+The intent here — stop the GPU's PCIe link from sleeping — is legitimate. But
+[`power.pcie-aspm-off`](../power/#pcie-active-state-power-management--powerpcie-aspm-off)
+does the same thing through the documented Windows power subsystem, applies to every
+PCIe device rather than just the GPU, and can be reverted cleanly.
+
+`DisableDynamicPstate` deserves its own note: it pins the GPU out of its
+low-power performance states, so the card sits at high clocks at idle. On a modern
+card that means higher idle temperature and less thermal headroom for boost when you
+actually need it.
+
+### The write-to-both-keys problem
+
+Every line in the old script was written twice, once to `\0000` and once to
+`\0001`, and mixed `CurrentControlSet` with `ControlSet001` between lines. On a
+single-GPU system `\0001` is usually a different device entirely, or does not exist.
+Writing driver-specific values into another device's class key is at best a no-op
+and at worst confusing to debug later.
+
+### The user-supplied GUID
+
+The scripts prompt:
+
+```text
+Enter your GPU class GUID:>
+```
+
+…and then interpolate whatever is typed straight into twenty-two `reg add` paths
+with no validation and all output suppressed. A typo produces a silent partial write
+into a path that may or may not exist, with no revert.
+
+## What to do instead
+
+If you want a leaner NVIDIA install, do it at install time with NVCleanstall rather
+than by writing registry values afterwards. See the
+[driver install guide](../../guides/nvidia-driver-install/).
+
+## The one NVIDIA registry value worth writing
+
+`EnableGR535 = 0` brings the driver-side **Image Sharpening** option back to the
+Control Panel on drivers that hid it behind the NVIDIA App. It is a preference, not
+a performance tweak, so it lives with the
+[tools](../../tools/nvidia-legacy-sharpen/) as a pair of `.reg` files rather than in
+the script.

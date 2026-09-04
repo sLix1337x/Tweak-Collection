@@ -1,0 +1,77 @@
+---
+/**
+ * Landing-page hero. Reads the tagline and actions from the page's `hero`
+ * frontmatter and renders the collection itself alongside: the categories are what
+ * this site is, so they are what goes above the fold.
+ *
+ * One entry per tweak page. Counts must match the script's -List output.
+ */
+import { Icon } from '@astrojs/starlight/components';
+
+const hero = Astro.locals.starlightRoute?.entry?.data?.hero ?? {};
+const actions = hero.actions ?? [];
+
+const categories = [
+  { label: 'Power & boot', count: 4, href: 'tweaks/power/', note: 'Power plan, PCIe ASPM, USB suspend, Fast Startup' },
+  { label: 'Latency', count: 4, href: 'tweaks/latency/', note: 'Game DVR, MMCSS, network throttling' },
+  { label: 'Network', count: 4, href: 'tweaks/network/', note: 'Delayed ACK, EEE, interrupt moderation' },
+  { label: 'Privacy', count: 2, href: 'tweaks/privacy/', note: 'Diagnostic data level, DiagTrack' },
+  { label: 'Identifiers', count: 3, href: 'tweaks/privacy-identifiers/', note: 'Ad ID, activity history, silent installs' },
+  { label: 'Services', count: 1, href: 'tweaks/services/', note: 'Three services with no consumer use' },
+  { label: 'NVIDIA', count: 2, href: 'tweaks/nvidia/', note: 'MSI mode, telemetry tasks' },
+];
+
+const total = categories.reduce((sum, category) => sum + category.count, 0);
+---
+
+<div class="tc-hero not-content">
+  <div class="tc-hero-copy">
+    <p class="tc-eyebrow">
+      <span class="tc-dot" aria-hidden="true"></span>
+      Collected, checked, and written down
+    </p>
+
+    <h1>
+      A checked<br />
+      <span class="tc-grad">Windows tweak collection.</span>
+    </h1>
+
+    <p class="tc-tagline">
+      {hero.tagline}
+    </p>
+
+    <div class="tc-actions">
+      {
+        actions.map((action) => (
+          <a
+            class={`tc-btn ${action.variant === 'primary' ? 'tc-btn-primary' : 'tc-btn-ghost'}`}
+            href={action.link}
+          >
+            {action.text}
+            {action.icon?.name && <Icon name={action.icon.name} size="1.1em" />}
+          </a>
+        ))
+      }
+    </div>
+  </div>
+
+  <div class="tc-collection">
+    <div class="tc-collection-head">
+      <strong>The collection</strong>
+      <span>{total} tweaks · {categories.length} pages</span>
+    </div>
+    <div class="tc-collection-grid">
+      {
+        categories.map((category) => (
+          <a class="tc-cat" href={category.href}>
+            <b>{category.label}</b>
+            <span>
+              {category.count} {category.count === 1 ? 'tweak' : 'tweaks'}
+            </span>
+            <em>{category.note}</em>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</div>

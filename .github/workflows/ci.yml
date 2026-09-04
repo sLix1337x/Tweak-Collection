@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  scripts:
+    name: PowerShell
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse check
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem -Path scripts -Filter *.ps1 -Recurse | ForEach-Object {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName, [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) {
+              $failed = $true
+              Write-Host "FAIL $($_.FullName)"
+              $errors | ForEach-Object { Write-Host "  $_" }
+            }
+            else { Write-Host "ok   $($_.FullName)" }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Tweaks.ps1 self-check (PowerShell 7)
+        shell: pwsh
+        working-directory: scripts/tweaks
+        run: ./Tweaks.Tests.ps1
+
+      # Windows PowerShell reads a BOM-less .ps1 as ANSI and cannot see hashtable
+      # keys through Sort-Object; both broke the script once without pwsh noticing.
+      - name: Tweaks.ps1 self-check (Windows PowerShell 5.1)
+        shell: powershell
+        working-directory: scripts/tweaks
+        run: ./Tweaks.Tests.ps1
+
+      # Writes only to its own HKCU scratch key and removes it again, so it is
+      # safe on a runner and needs no elevation.
+      - name: Switch-RenderPath flag-writer self-check
+        shell: pwsh
+        working-directory: scripts/switch-render-path
+        run: ./test-flag.ps1
+
+  docs:
+    name: Docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - run: npm ci
+        working-directory: docs
+
+      - run: npm run build
+        working-directory: docs

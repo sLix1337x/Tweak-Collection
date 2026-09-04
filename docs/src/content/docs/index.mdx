@@ -1,0 +1,135 @@
+---
+title: Tweak Collection
+description: Windows tweaks for stability, performance and privacy — each one stating the mechanism it changes, what it costs, and how to undo it.
+template: splash
+editUrl: false
+hero:
+  tagline: Windows settings worth changing for stability, performance and privacy — each with the mechanism it touches, the cost it carries, and a way back out.
+  actions:
+    - text: Browse the collection
+      link: tweaks/power/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/sLix1337x/Tweak-Collection
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/components';
+
+<div class="tc-stats not-content">
+  <div class="tc-stat"><b>20</b><span>tweaks that survived checking</span></div>
+  <div class="tc-stat"><b>100%</b><span>reversible from a captured backup</span></div>
+  <div class="tc-stat"><b>0</b><span>dependencies beyond Windows</span></div>
+  <div class="tc-stat"><b>40+</b><span>tweaks rejected, with reasons</span></div>
+</div>
+
+## What this is
+
+A checked collection of Windows tweaks. Every entry names the subsystem it changes,
+states what that costs, and gives an exact way to undo it. A companion list covers
+the popular tweaks that did not survive the same checks.
+
+It started as a text file of notes and a few batch scripts assembled from forum
+posts. Read properly, most of what was in them was wrong: values the kernel
+silently ignores, commands removed from Windows years earlier, and a block that
+enabled the latency features its own comment claimed to disable. Everything here
+was rebuilt from that, with the reasoning written down.
+
+<CardGrid stagger>
+  <Card title="Mechanism first" icon="open-book">
+    Each tweak names the subsystem it touches and what it costs. Where something is
+    a trade rather than a free win, it says so.
+  </Card>
+  <Card title="Nothing is one-way" icon="seti:powershell">
+    The script captures the old value before it writes anything, so `-Revert` puts
+    back exactly what was there — including deleting values that did not exist.
+  </Card>
+  <Card title="The rejects are listed too" icon="warning">
+    Over forty popular tweaks that do nothing, no longer parse, or make things
+    worse, grouped by the subsystem they claim to touch.
+  </Card>
+  <Card title="Judgement calls stay manual" icon="setting">
+    BIOS settings, driver installs and interrupt affinity depend on the hardware,
+    so they live in the guides rather than the script.
+  </Card>
+</CardGrid>
+
+## How to work through it
+
+<Steps>
+
+1. **Measure first.** Ten minutes of LatencyMon and one frame-time capture before
+   changing anything. Without a baseline there is no way to tell a fix from a
+   placebo.
+
+2. **Read the page for whatever you are about to change**, so the mechanism and the
+   cost are clear before the value is written.
+
+3. **Apply one category, then reboot.** By hand, or with the script. If something
+   feels off the next day, there is only one category to revert.
+
+4. **Measure again.** Keep whatever moved the number, revert whatever did not.
+
+</Steps>
+
+## Start here
+
+<CardGrid>
+  <LinkCard
+    title="How a tweak earns its place"
+    href="start/method/"
+    description="The four questions everything answers before it goes in."
+  />
+  <LinkCard
+    title="Benchmark"
+    href="guides/benchmark/dpc-latency/"
+    description="LatencyMon, PresentMon and CapFrameX — what to measure and what the numbers mean."
+  />
+  <LinkCard
+    title="Debunked & rejected"
+    href="reference/debunked/"
+    description="HPET, dynamic tick, RSS, the NVIDIA RM* keys — and why none of them survived."
+  />
+  <LinkCard
+    title="Undoing a tweak"
+    href="reference/undoing-a-tweak/"
+    description="By hand, from a restore point, or from the script's backup."
+  />
+</CardGrid>
+
+## Scripts & tools
+
+Conveniences, not the point of the collection. Everything they do is written out on
+the pages above and can be done by hand instead.
+
+<CardGrid>
+  <LinkCard
+    title="Tweaks.ps1"
+    href="tools/tweaks-script/"
+    description="Applies the tweaks on this site from an interactive picker, after backing up everything it touches."
+  />
+  <LinkCard
+    title="Switch-RenderPath.ps1"
+    href="tools/switch-render-path/"
+    description="MPO, DWM internals, fullscreen optimizations and the flip-model upgrade, as four switchable axes."
+  />
+  <LinkCard
+    title="USB-LatencySuite.ps1"
+    href="tools/usb-latency-suite/"
+    description="Turns off USB and HID power saving and idle, per driver and per device, with an exact revert."
+  />
+  <LinkCard
+    title="DiscordDebloat.ps1"
+    href="tools/discord-debloat/"
+    description="Takes a Discord install from 607 MB to 314 MB without breaking voice."
+  />
+</CardGrid>
+
+:::caution[Before applying any of this]
+These settings change how Windows schedules work, manages power and handles the
+network. Some are trades rather than upgrades, and what helps on one machine does
+nothing on another. Apply one category at a time, reboot in between, and read the
+[debunked list](reference/debunked/) before going looking for more tweaks elsewhere.
+:::

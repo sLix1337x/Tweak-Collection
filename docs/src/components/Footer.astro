@@ -1,0 +1,15 @@
+---
+/**
+ * Starlight's footer (pagination, edit link, last updated) plus a colophon
+ * crediting the tooling this site is built on.
+ */
+import Default from '@astrojs/starlight/components/Footer.astro';
+---
+
+<Default><slot /></Default>
+
+<p class="tc-colophon">
+  Built with <a href="https://starlight.astro.build" rel="noopener">Starlight</a>, the
+  documentation theme for <a href="https://astro.build" rel="noopener">Astro</a> — genuinely
+  excellent, and worth a look if you are putting notes of your own online.
+</p>

@@ -1,0 +1,10 @@
+---
+import Default from '@astrojs/starlight/components/Head.astro';
+---
+
+<Default><slot /></Default>
+
+{/* Matches the page background so mobile browser chrome does not flash white. */}
+<meta name="theme-color" content="#0d0a15" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="color-scheme" content="dark light" />

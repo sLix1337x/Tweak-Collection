@@ -1,0 +1,69 @@
+---
+title: Identifiers & apps
+description: The advertising ID, activity history and the apps Windows installs on its own.
+sidebar:
+  order: 5
+tags:
+  - privacy
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Three settings that are not telemetry in the diagnostic sense: an identifier
+apps can read, a history Windows uploads, and a list of things it installs
+without being asked. All three are Group Policy values, and all three revert by
+deleting what was written.
+
+<span id="privacy.advertising-id" class="tc-anchor" />
+
+## Per-user advertising ID — privacy.advertising-id
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo
+  DisabledByGroupPolicy = 1
+```
+
+Windows generates a stable per-user identifier that apps can read to correlate
+your activity across the system. This turns it off and clears it. No functional
+downside.
+
+<span id="privacy.activity-history" class="tc-anchor" />
+
+## Timeline collection and upload — privacy.activity-history
+
+<TweakMeta risk="Low" evidence="Documented" reboot={true} />
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\System
+  PublishUserActivities = 0
+  UploadUserActivities  = 0
+```
+
+`PublishUserActivities` stops the local collection; `UploadUserActivities` stops it
+being sent to your Microsoft account. Setting only the second one is a common
+half-measure — it stops the sync but keeps the local database growing.
+
+**What it costs:** "Pick up where I left off" and cross-device Timeline stop
+working. Most people were not using them.
+
+<span id="privacy.consumer-features" class="tc-anchor" />
+
+## Silently installed apps — privacy.consumer-features
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent
+  DisableWindowsConsumerFeatures = 1
+  DisableSoftLanding             = 1
+```
+
+This is what stops Windows pulling promoted apps and games onto the machine on its
+own, and stops Start menu "suggestions". Worth applying on a fresh install before
+the first sign-in to a Microsoft account, when most of that install happens.
+
+**What it costs:** nothing you will miss.
+

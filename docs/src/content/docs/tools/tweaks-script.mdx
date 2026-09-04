@@ -1,0 +1,207 @@
+---
+title: Tweaks.ps1
+description: A reversible applier for the tweaks in this collection - interactive picker, dry runs, and a backup taken before anything is written.
+sidebar:
+  order: 1
+tags:
+  - registry
+---
+
+import PickerPreview from '../../../components/PickerPreview.astro';
+
+One of the tools in this collection, not the point of it. Everything `Tweaks.ps1`
+does is written out on the [tweak pages](../../tweaks/power/) and can be applied by
+hand instead; it just saves doing that twenty times over on every reinstall, and
+remembers the old values so they can be put back.
+
+`scripts/tweaks/Tweaks.ps1` is the whole thing. One file, nothing to install, no
+dependencies beyond what ships with Windows.
+
+## Get it
+
+```powershell
+git clone https://github.com/sLix1337x/Tweak-Collection
+cd Tweak-Collection/scripts/tweaks
+```
+
+Run it from an **elevated** PowerShell window — the picker reads live system state
+and needs administrator rights for that. `-List` is the one mode that does not.
+
+Windows blocks scripts downloaded from the internet by default. Either unblock the
+file once:
+
+```powershell
+Unblock-File .\Tweaks.ps1
+```
+
+…or run it with an execution policy scoped to the current process only, which
+resets when you close the window:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Tweaks.ps1 -List
+```
+
+## Just run it
+
+Unlike tweak scripts that start rewriting the registry the second you double-click
+them, nothing here is written until tweaks are selected and confirmed. With no
+arguments it opens the picker:
+
+```powershell
+.\Tweaks.ps1
+```
+
+<PickerPreview />
+
+The picker runs on the terminal's alternate screen buffer, so it takes the window
+over completely and your scrollback comes back untouched when you quit.
+
+The right-hand column shows what is **already applied on this machine**, read live
+at startup — not from the backup file. The two lines under the list describe
+whatever the cursor is on, so nothing gets selected blind.
+
+| Key | Action |
+| --- | --- |
+| `↑` `↓` or `k` `j` | Move. Category headers are skipped. |
+| `PgUp` `PgDn` `Home` `End` | Jump. |
+| `space` | Select / deselect the tweak under the cursor. |
+| `a` / `n` | Select all / select none. |
+| `c` | Toggle every tweak in the category under the cursor. |
+| `enter` | Apply the selection, after a confirmation screen listing what will change. |
+| `d` | Dry run the selection — prints what would happen, changes nothing. |
+| `r` | Revert the selection, for tweaks that have a backup entry. |
+| `s` | Re-read the applied column from the system. |
+| `q` or `Esc` | Quit. |
+
+Everything below is the non-interactive path, for scripting and for applying the
+same set to several machines.
+
+## See what is available
+
+`-List` is the only mode that does not need administrator rights.
+
+```powershell
+.\Tweaks.ps1 -List
+```
+
+```text
+Id                             Category Risk   Reboot Title
+--                             -------- ----   ------ -----
+power.ultimate                 power    Low    no     Activate the Ultimate Performance power plan
+power.pcie-aspm-off            power    Low    no     Disable PCIe Active State Power Management
+system.fast-startup-off        system   Low    yes    Disable Fast Startup (hiberboot)
+latency.gamedvr-off            latency  Low    no     Disable Game DVR / background recording
+...
+```
+
+## See what is already applied
+
+```powershell
+.\Tweaks.ps1 -Status
+```
+
+This reads the live machine, not the backup file, so it reports settings applied by
+hand years ago as well as ones the script wrote.
+
+## Dry-run before you commit
+
+Every apply and revert supports `-WhatIf`. Use it. It prints exactly what would be
+touched and changes nothing.
+
+```powershell
+.\Tweaks.ps1 -Apply privacy,latency -WhatIf
+```
+
+## Apply
+
+You can name individual tweaks, whole categories, or `all`.
+
+```powershell
+# one tweak
+.\Tweaks.ps1 -Apply net.nagle
+
+# a whole category
+.\Tweaks.ps1 -Apply privacy
+
+# several, mixed
+.\Tweaks.ps1 -Apply privacy,latency,power.ultimate
+```
+
+Before applying anything the script tries to create a system restore point. If
+System Protection is off, or Windows refuses because one was already made in the
+last 24 hours, it warns and continues — the per-tweak backup file is written
+regardless.
+
+Pass `-NoRestorePoint` to skip that step.
+
+:::tip[Recommended order]
+One category, reboot, then use the machine for a day. If something feels off you know
+which category to revert. Applying `all` at once and rebooting into a problem tells
+you nothing about which of the twenty caused it.
+:::
+
+## Undo
+
+```powershell
+.\Tweaks.ps1 -Revert net.nagle
+.\Tweaks.ps1 -Revert all
+```
+
+That restores exactly what was captured — including deleting values that did not
+exist beforehand, rather than setting them to a guessed default. Reverted entries
+are removed from the backup as they succeed, so a partial failure can be re-run
+safely. Reboot afterwards; several of these settings are only read at boot.
+
+See [undoing a tweak](../../reference/undoing-a-tweak/) for the Windows defaults you
+would need if you ever lose the backup file.
+
+## Where state lives
+
+| Thing | Path |
+| --- | --- |
+| Backup of pre-change values | `%LOCALAPPDATA%\WindowsTweaks\backup.json` |
+| Override the location | `-BackupPath D:\somewhere\backup.json` |
+
+The backup is written *before* the change is made, so an interrupted apply still
+leaves a file describing the machine as it was.
+
+:::caution
+Back this file up if you care about clean reverts. Without it `-Revert` has nothing
+to restore from, and you are down to the manual undo instructions on each tweak
+page.
+:::
+
+## Self-check
+
+The script ships with a dependency-free self-check covering the tweak table, the
+picker's layout maths and the backup/restore plumbing. The renderer is exercised by
+swapping its output primitive for a collector, so a frame can be drawn and checked
+for overflow at every terminal size without a console. It needs no elevation and
+changes no system settings.
+
+```powershell
+pwsh -File .\Tweaks.Tests.ps1
+```
+
+```text
+Tweaks.ps1 self-check
+  ok    every tweak has the required metadata
+  ok    every tweak is either declarative or fully imperative
+  ok    ids are unique
+  ok    Resolve-Selection matches by id, by category and by all
+  ok    Resolve-Selection rejects an unknown name instead of silently doing nothing
+  ok    Format-Fit pads short text and truncates long text to the exact width
+  ok    the UI row list covers every tweak exactly once
+  ok    the UI row list starts on a header and ends on a tweak
+  ok    no category header is left without tweaks under it
+  ok    every risk level maps to a console colour
+  ok    the frame layout never reaches the last row or column
+  ok    a drawn frame stays inside its own box at every terminal size
+  ok    restoring a value that did not exist deletes it again
+  ok    restoring a value that existed puts the old one back
+  ok    a 0xFFFFFFFF DWord reads as applied on both PowerShell editions
+  ok    string values survive a round trip
+  ok    the backup file round-trips nested state
+  ok    a missing backup file reads as empty rather than throwing
+All checks passed.
+```

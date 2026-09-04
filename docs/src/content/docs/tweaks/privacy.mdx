@@ -1,0 +1,71 @@
+---
+title: Privacy
+description: Telemetry, advertising ID, activity history, suggested apps and the services behind them.
+sidebar:
+  order: 4
+tags:
+  - privacy
+  - services
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Everything in this category is a Group Policy value under
+`HKLM\SOFTWARE\Policies\`. That matters for two reasons: policy values are what
+Windows itself uses, so they survive feature updates better than app-level toggles;
+and reverting is as simple as deleting the value.
+
+These are privacy and maintenance changes, not general FPS or 1% low optimizations.
+Keep them separate from performance benchmarking.
+
+<span id="privacy.telemetry" class="tc-anchor" />
+
+## Diagnostic data level — privacy.telemetry
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection
+  AllowTelemetry                  = 0
+  DoNotShowFeedbackNotifications  = 1
+```
+
+:::note[What this actually achieves on your edition]
+`AllowTelemetry = 0` means **Security** level, and it is only fully honoured on
+Enterprise, Education and IoT editions. On Home and Pro, Windows clamps it to
+**Basic / Required**. That is still the floor Microsoft allows without an
+Enterprise SKU, and it is lower than the default.
+
+Anyone promising "telemetry completely off" on Windows 11 Pro through a registry
+value is selling you something. Pair this with
+`privacy.services-telemetry`, which disables the transport, for the real effect.
+:::
+
+<span id="privacy.services-telemetry" class="tc-anchor" />
+
+## DiagTrack and dmwappushservice — privacy.services-telemetry
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+The policy values above set the *level*. These two services are the *transport*.
+
+| Service | Display name | What it does |
+| --- | --- | --- |
+| `DiagTrack` | Connected User Experiences and Telemetry | Collects and uploads diagnostic data |
+| `dmwappushservice` | WAP Push Message Routing Service | Device-management message routing, used by telemetry |
+
+The script stops both and sets them to Disabled, capturing their previous startup
+type so revert restores it exactly.
+
+**What it costs:** Windows Feedback Hub stops working, and some enterprise device
+management scenarios break. On a personal machine, nothing.
+
+:::tip[Where this stops]
+The next step most guides take is disabling `WSearch`, `SysMain`, `wuauserv` or
+`WaaSMedicSvc`. Killing search and prefetch makes the machine measurably worse to
+use, and disabling Windows Update means no security patches. None of them are worth
+it — see
+[debunked: services and system](../../reference/debunked/services-and-system/).
+:::
+

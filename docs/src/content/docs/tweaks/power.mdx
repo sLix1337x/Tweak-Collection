@@ -1,0 +1,113 @@
+---
+title: Power & boot
+description: Power plan, PCIe link power management, USB selective suspend and Fast Startup.
+sidebar:
+  order: 1
+tags:
+  - power
+  - latency
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Windows' power management is the single biggest source of avoidable latency on a
+desktop. Almost every setting here trades watts for responsiveness — the right trade
+on a machine plugged into a wall, and the wrong one on a laptop running on
+battery.
+
+<span id="power.ultimate" class="tc-anchor" />
+
+## Ultimate Performance power plan — power.ultimate
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+Windows ships a hidden Ultimate Performance scheme that biases toward high
+processor performance and less parking. On consumer SKUs it is commonly made
+visible by duplicating it.
+
+```powershell
+powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
+powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+```
+
+**What it costs:** noticeably higher idle power draw and idle temperatures — on a
+16-core desktop part, tens of watts just sitting at the desktop. The cores never
+park, so there is no wake-up ramp when work arrives, which is the entire point.
+
+**What it does not do:** it does not overclock anything, and it does not raise peak
+framerate in a GPU-bound game. Any benefit is limited to burst/ramp behavior and
+must be demonstrated with frame-time captures.
+
+:::note
+On laptops, do not use this. Use **High Performance** while plugged in and leave the
+battery profile alone.
+:::
+
+A worked variation on this plan — minimum processor state back down to 5 % so idle
+cores can clock down, a narrower boost band, USB suspend off, display never off — is
+exported as
+[`CS2 Zen3 Frametime.pow`](../../tools/cs2-zen3-frametime/) with every difference
+listed.
+
+<span id="power.pcie-aspm-off" class="tc-anchor" />
+
+## PCIe Active State Power Management — power.pcie-aspm-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+ASPM lets the PCIe link drop into a low-power state between transfers. Waking it
+back up adds a small device- and platform-dependent delay. It can matter for a
+specific DPC or link-wake problem, but LatencyMon attribution alone does not prove
+that disabling ASPM is the fix.
+
+```powershell
+powercfg /setacvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 0
+powercfg /setactive SCHEME_CURRENT
+```
+
+**What it costs:** a few watts at idle.
+
+<span id="power.usb-suspend-off" class="tc-anchor" />
+
+## USB selective suspend — power.usb-suspend-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+Windows suspends idle USB ports. On a mouse or keyboard that is invisible; on an
+audio interface, a DAC or a capture device it shows up as a click, a dropout, or a
+device that vanishes from the system after a period of idle.
+
+The setting also exists per-device in Device Manager, under **Power Management →
+Allow the computer to turn off this device to save power** on every USB Root Hub.
+The power plan value is the global switch and is the one the script changes.
+
+<span id="system.fast-startup-off" class="tc-anchor" />
+
+## Fast Startup (hiberboot) — system.fast-startup-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={true} />
+
+This is the stability tweak on this page, and the single most useful entry in the
+collection.
+
+When Fast Startup is on, **Shut down** does not shut down. Windows logs you off,
+hibernates the kernel session to `hiberfil.sys`, and restores it on next power-on.
+Driver state, service state and kernel memory carry over across what you think is a
+clean boot.
+
+That is why restarting a machine fixes problems that shutting it down and turning
+it back on does not: **Restart** performs a full boot, **Shut down** does not.
+
+```powershell
+# what the script writes
+HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power\HiberbootEnabled = 0
+```
+
+**What it costs:** boot takes a few seconds longer. On an NVMe drive it is barely
+perceptible.
+
+**What it keeps:** hibernate and sleep still work. This only disables the hybrid
+shutdown behaviour, not hibernation itself. The old advice of `powercfg /h off`
+throws away hibernate *and* the hiberfil.sys disk space to achieve the same thing,
+which is a heavier hammer than the job needs.

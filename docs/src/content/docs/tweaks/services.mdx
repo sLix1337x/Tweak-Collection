@@ -1,0 +1,100 @@
+---
+title: Services & bloat
+description: Which services are safe to disable, which are not, and why most service lists are dangerous.
+sidebar:
+  order: 5
+tags:
+  - services
+  - privacy
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+One tweak, three services, and a printer check. None is a general FPS or 1% low
+optimization; each is a hardware, attack-surface, or feature-usage decision.
+
+<span id="bloat.services" class="tc-anchor" />
+
+## bloat.services
+
+<TweakMeta risk="Medium" evidence="Documented" reboot={false} />
+
+| Service | Display name | Why it goes |
+| --- | --- | --- |
+| `RetailDemo` | Retail Demo Service | Kiosk mode for store display machines. Never runs on a real PC. |
+| `MapsBroker` | Downloaded Maps Manager | Only used by the Maps app for offline maps. |
+| `Spooler` | Print Spooler | Printing. **Skipped automatically if a printer is installed.** |
+
+The script captures each service's startup type and running state before changing
+anything, so revert restores exactly what was there — not a guessed default.
+
+### The Print Spooler is a special case
+
+Disabling it on a machine with a printer breaks printing outright, so the script
+enumerates installed printers first and leaves the spooler alone if it finds one
+that is not Microsoft Print to PDF, XPS Document Writer, OneNote or Fax.
+
+On a printerless machine it is worth doing for a reason that has nothing to do with
+performance: the spooler is the component behind the PrintNightmare family of
+privilege-escalation vulnerabilities, and it runs as SYSTEM. Turning it off on a
+machine that will never print removes that surface entirely.
+
+## Why this list is so short
+
+Service-disabling lists are where tweak guides do the most damage. The typical list
+includes things like:
+
+| Service | What disabling it actually does |
+| --- | --- |
+| `WSearch` | Start menu search and Explorer search stop working properly. Extremely noticeable. |
+| `SysMain` (Superfetch) | Was genuinely bad on spinning disks. On NVMe it is close to free, and disabling it does not help. |
+| `wuauserv` | No security updates. |
+| `WaaSMedicSvc` | Windows silently repairs this and turns it back on; you have achieved nothing but confusion. |
+| `AudioEndpointBuilder` | Audio devices stop being detected. |
+| `BFE` (Base Filtering Engine) | Windows Firewall and IPsec stop working. Cannot be started again without a reboot. |
+| `Themes` | Breaks visual styles and, on some builds, taskbar rendering. |
+
+A modern Windows service that is idle costs approximately nothing. `svchost`
+processes sitting at 0% CPU with a few megabytes of paged-out working set are not
+what is slowing your machine down. The measurable wins are elsewhere — power
+management, Game DVR, driver quality.
+
+Disable a service when you have a specific reason to (attack surface, a known
+misbehaviour, hardware you do not have), not to make a number go down.
+
+## Services that look safe and are not
+
+Typical service-disabling lists include these. Each one is reasonable on a specific
+machine and wrong as a general recommendation:
+
+| Service | Keep it if |
+| --- | --- |
+| Windows Biometric Service | You use Windows Hello. Disabling it removes fingerprint and face sign-in. |
+| Network Connection Broker | You use Store apps. It delivers their background notifications. |
+| Connected Devices Platform Service | You use Phone Link or nearby sharing. |
+| Geolocation Service | Anything is location-aware, including automatic time zone. |
+| Parental Controls | Family Safety is set up on the machine. |
+| Radio Management Service | The machine has Wi-Fi or Bluetooth to put into airplane mode. |
+| Program Compatibility Assistant | Never, on a machine running current software — but it is also nearly free to leave running. |
+
+None of them are in the script, because "correct on one machine" is not the same as
+"correct on yours". Disable them by hand if they match your setup:
+
+```powershell
+Set-Service -Name lfsvc -StartupType Disabled   # Geolocation
+Set-Service -Name PcaSvc -StartupType Disabled  # Program Compatibility Assistant
+```
+
+## Why not msconfig
+
+> Disable non-Microsoft services in msconfig
+
+Common advice, and bad advice. The "hide all Microsoft services" checkbox does not
+distinguish between a vendor's telemetry uploader and the driver service a GPU,
+audio interface or anti-cheat needs to function. Disabling that list wholesale is
+how a machine ends up booting with nothing working, and `msconfig` keeps no record
+of what it changed.
+
+To audit what starts with the machine, use **Autoruns** from Microsoft Sysinternals.
+It shows the publisher, the signature status and the exact registry key or task, and
+it lets you re-enable individual entries.

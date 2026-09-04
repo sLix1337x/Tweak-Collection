@@ -1,0 +1,25 @@
+---
+title: All tweaks
+description: Every tweak in the collection in one table, with its ID, risk, evidence and whether it needs a reboot.
+sidebar:
+  order: 0
+tags:
+  - registry
+---
+
+import TweakIndex from '../../../components/TweakIndex.astro';
+
+Every tweak in the collection, in the order the pages are meant to be worked
+through. The ID is what the script uses: `-Apply power.ultimate`, `-Revert
+power.ultimate`.
+
+<TweakIndex />
+
+**Risk** is what happens if the tweak is wrong for your machine, not how hard it is
+to undo — everything here is reversible. **Evidence** is how the entry is
+justified: `Documented` means a vendor or Microsoft document describes the
+mechanism, `Measurable` means the effect shows up in a capture on the machine it
+was tested on.
+
+Popular tweaks that did not survive the same checks are listed separately, under
+[Debunked & rejected](../reference/debunked/).
