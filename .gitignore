@@ -1,0 +1,21 @@
+# Node / Astro
+node_modules/
+dist/
+.astro/
+.DS_Store
+desktop.ini
+
+# Local tweak state - never commit a machine backup
+backup.json
+*.backup.json
+
+# Binaries do not belong in this repo. Download tools from the vendor.
+*.exe
+*.msi
+*.zip
+*.7z
+# Local working notes that are not part of the published site.
+docs/local-*.md
+
+# Local working notes, never committed
+HANDOFF.md

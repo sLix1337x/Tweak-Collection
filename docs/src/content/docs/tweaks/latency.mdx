@@ -1,0 +1,229 @@
+---
+title: Latency & scheduling
+description: Game DVR, MMCSS, network throttling and the scheduler settings that actually matter.
+sidebar:
+  order: 2
+tags:
+  - latency
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Four values, all documented and verified present in the driver that reads them.
+Quantum lengths, input queue sizes and timer tricks are on the
+[debunked page](../../reference/debunked/).
+
+<span id="latency.gamedvr-off" class="tc-anchor" />
+
+## Game DVR and background recording — latency.gamedvr-off
+
+<TweakMeta risk="Low" evidence="Documented / Measurable" reboot={false} />
+
+Background recording keeps a rolling encode of the foreground window on the GPU
+encoder. The cost appears in frame-time captures as periodic spikes rather than a
+lower average.
+
+On Windows 11 background recording is **off by default** — the capture stack is
+installed and running, the rolling encode is not. This is a capture-overhead
+reduction, not an FPS or 1 % low increase, and applies to machines that never use
+Game Bar recording.
+
+```text
+HKCU\System\GameConfigStore\GameDVR_Enabled = 0
+HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR\AllowGameDVR = 0
+```
+
+The HKCU half is per-user — apply it from each account. The `HKLM` policy value
+covers the machine regardless.
+
+The Game Bar settings API reads a separate per-user switch. The full capture key also
+holds bitrate, resolution and framerate modes, historical buffer length, mic and
+system gain, and hotkey virtual-key codes:
+
+```text
+HKCU\Software\Microsoft\Windows\CurrentVersion\GameDVR
+  AppCaptureEnabled        = 0   (the Settings/Game Bar half)
+  HistoricalCaptureEnabled = 0   (the rolling "last 30 seconds" buffer)
+```
+
+Setting these closes the gap if capture is re-enabled through the Settings UI rather
+than the policy.
+
+:::note[Game Bar itself still works]
+This disables capture, not the overlay. Win+G still opens the Game Bar for
+performance counters and audio mixing.
+:::
+
+:::caution[The same policy key gates Game Mode]
+`HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR` also carries `AllowAutoGameMode`,
+which decides whether **Game Mode** registers. `AllowGameDVR = 0` does not touch it,
+so Game Mode is unaffected by this tweak.
+
+Game Mode itself suppresses the `Win32PrioritySeparation` foreground boost, pulls
+games out of `REALTIME_PRIORITY_CLASS` down to `NORMAL`, and its power-profile switch
+does nothing when the active scheme is already High Performance. Treat it as a
+variable to A/B when investigating a frame-time problem.
+:::
+
+<span id="latency.network-throttling-off" class="tc-anchor" />
+
+## Multimedia network throttling — latency.network-throttling-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={true} />
+
+Windows caps how much received network traffic a NIC may hand up per receive DPC
+while multimedia work is scheduled, so playback cannot be starved by a download. The
+value is the maximum number of `NET_BUFFER_LIST` structures a miniport driver may
+indicate **per receive DPC** — a per-indication count with no time unit, not the
+"ten packets per millisecond" of the Russinovich-era description.
+
+Two constraints:
+
+- **The cap is not applied whenever a multimedia app is running.** MMCSS applies it
+  only while at least one registered MMCSS thread in the **Medium or High**
+  scheduling category is scheduled, and lifts it (indicating all NBLs) when that
+  count returns to zero.
+- **It requires miniport support.** Delivered through NDIS Receive Side Throttle,
+  mandatory for NDIS 6.20+ drivers. The NDIS per-processor table tops out at 64
+  NBLs, so the default of 10 clamps the RST ladder.
+
+The setting removes a packet-processing cap intended to protect multimedia
+workloads. It does not lower server ping and has no path to ordinary UDP games.
+
+```text
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile
+  NetworkThrottlingIndex = 0xFFFFFFFF   (no cap; default is 10)
+```
+
+The value is clamped on read: `0` becomes `1`, `1`–`70` pass through, `71` to
+`0xFFFFFFFE` becomes `70`, and only `0xFFFFFFFF` removes the maximum. Writing `100`
+yields 70.
+
+**Cost:** with the cap removed, the miniport's receive callback can run inline inside
+`ndisInterruptDpc` instead of being deferred, raising `ndis.sys` DPC execution times.
+That is the mechanism behind both the audio-crackle risk and independent measurements
+showing higher NDIS DPC latency after disabling it. Expect audio glitching on a
+CPU-starved system under heavy network load; revert if a four-core machine crackles.
+
+:::note[The commonly cited KB number is wrong]
+"KB 2483177" is a Media Foundation H.264 codec hotfix, unrelated to network
+throttling. The retired KB is 948066; the current documentation is Microsoft's
+"Receive Side Throttle in NDIS 6.20" material and the
+`NDIS_RECEIVE_THROTTLE_PARAMETERS` structure.
+:::
+
+<span id="latency.system-responsiveness" class="tc-anchor" />
+
+## MMCSS background reservation — latency.system-responsiveness
+
+<TweakMeta risk="Low" evidence="Documented" reboot={true} />
+
+`SystemResponsiveness` is the percentage of CPU time the Multimedia Class Scheduler
+guarantees to *non*-multimedia background work. The default is 20. The script sets
+10, which gives multimedia and game threads more of the machine while still leaving
+background work a slice.
+
+```text
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile
+  SystemResponsiveness = 10   (default 20)
+```
+
+It splits every scheduler period — `SchedulerPeriod`, default 100000 (10 ms) — into a
+boosted slice and an exhausted slice. The exhausted slice is `period × value / 100`,
+during which MMCSS threads drop to priority 1–7; for the rest of the period they run
+at their category's boosted priority. The default 20 is 2 ms exhausted / 8 ms
+boosted; 10 is 1 ms / 9 ms.
+
+:::caution[Do not set this to 0]
+The value is **rounded down to a multiple of 10**, and anything **below 10 or above
+100 is treated as 20**. `0` and `5` therefore restore the default while presenting as
+a removed reservation. `100` disables MMCSS outright; registrations fail with
+`STATUS_SERVER_DISABLED`.
+
+`10` is the effective floor.
+
+The routine applying the clamp reads this value **before** the `Tasks` key and
+returns early at `100`, so at `100` the `Tasks\Games` profile is never loaded.
+:::
+
+<span id="latency.mmcss-games" class="tc-anchor" />
+
+## MMCSS Games task profile — latency.mmcss-games
+
+<TweakMeta risk="Low" evidence="Documented / Verified in mmcss.sys" reboot={true} />
+
+Applications that register with MMCSS under the "Games" task get scheduled
+according to this profile. Raising it moves those threads from the Medium
+scheduling category into High.
+
+```text
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games
+  Scheduling Category  = "High"   (default "Medium")
+```
+
+The categories are priority bands: Low 8–15, Medium 16–22, High 23–26, all dropping
+to 1–7 during the exhausted slice. In the High band the boosted base priority is
+forced to 24 regardless of `Priority`.
+
+:::danger[The other three values MMCSS guides recommend are inert]
+`GPU Priority = 8`, `Priority = 6` and `SFIO Priority = "High"` appear in most MMCSS
+guides. Dumping the value names out of the driver that reads them:
+
+```powershell
+$b = [IO.File]::ReadAllBytes('C:\Windows\System32\drivers\mmcss.sys')
+$u = [Text.Encoding]::Unicode.GetString($b)
+'Scheduling Category','Priority','GPU Priority','SFIO Priority' |
+  ForEach-Object { '{0,-20} {1}' -f $_, ($u.IndexOf($_, [StringComparison]::Ordinal) -ge 0) }
+```
+
+On build 10.0.26100.8968, `GPU Priority` and `SFIO Priority` **are not in the binary
+at all**. Microsoft's documentation states "this priority is not yet used" and "this
+value is not used"; an independent disassembly of the same driver agrees.
+
+`Priority` is read, but under `Scheduling Category = High` the **boosted** priority is
+fixed at 24. The exhausted priority still derives from `Priority` (stored as the value
+minus one, floored at 1), so it is not dead — only irrelevant to the priority the
+tweak intends to raise.
+
+`Background Only` is unread. `Latency Sensitive` exists in logging with no consumer
+found. `Clock Rate` has been dead since Windows 7. `Priority When Yielded` (range
+1–19, default 16) is real but concerns yielding, not scheduling category.
+
+Details on the
+[debunked page](../../reference/debunked/scheduler/#mmcss-gpu-priority-and-sfio-priority--invalid).
+:::
+
+**MMCSS is opt-in.** It reaches only processes that call
+`AvSetMmThreadCharacteristics` from `avrt.dll` with the "Games" task, and many modern
+engines never do. To check a given title:
+
+```powershell
+$exe = 'C:\Path\To\Game.exe'
+$s = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe))
+'avrt.dll','AvSetMmThreadCharacteristics' | Where-Object { $s -match [regex]::Escape($_) }
+```
+
+No match means the `Tasks\Games` key is inert for that title regardless of its
+contents. Where it does apply the effect is real; where it does not it costs nothing.
+
+Registration is rare. An independent researcher tracing MMCSS registrations through
+the `Thread_SetChars` / `Thread_Join` ETW events across a normal desktop workload
+reports never observing a task other than **Audio** or **Pro Audio** — no `Games`
+registrant at all. Windows ships eight default task profiles (Audio, Capture,
+Distribution, Games, Playback, Pro Audio, Window Manager, DisplayPostProcessing); two
+see use. Run the string check first.
+
+:::caution[Never restart the MMCSS service to apply this]
+Since Windows 10, MMCSS is a kernel driver rather than a svchost service and caches
+task profiles at load, so these changes require a **reboot**. Registered threads hold
+references to the driver, so a stop request never completes: the service parks in
+`STOP_PENDING`, the next start fails with `1056`, and **new MMCSS registrations fail
+machine-wide until the next reboot, audio included.**
+:::
+
+## What is left out
+
+Mouse and keyboard `DataQueueSize`, HPET, dynamic tick and the "long quantum"
+scheduler advice are on the [debunked page](../../reference/debunked/).
+`Win32PrioritySeparation` has [its own page](../../reference/win32priorityseparation/).

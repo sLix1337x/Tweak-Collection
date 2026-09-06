@@ -1,0 +1,42 @@
+---
+title: Index
+description: The whole collection on one page — every section and page with a one-line summary, and every tweak with its ID, risk, evidence and reboot requirement.
+sidebar:
+  order: 0
+tags:
+  - registry
+---
+
+import SiteIndex from '../../../components/SiteIndex.astro';
+import TweakIndex from '../../../components/TweakIndex.astro';
+
+The whole collection on one page.
+
+Pages are grouped by **subject rather than by folder**, because a reader arrives with "my
+network stutters", not with "I would like to browse the guides" — so the tweak page, the
+manual adapter settings and the driver notes for one subsystem sit together. BIOS is
+split by socket first, since that is the question you can answer before reading anything.
+
+New here, in order: [how a tweak earns its place](../start/method/) states the four
+questions everything below had to answer, [fresh install order](../reference/fresh-install-order/)
+is the sequence for a machine being built, and
+[debunked & rejected](../reference/debunked/) is the half of the collection most people
+arrive already believing.
+
+## Every page
+
+<SiteIndex />
+
+## Every tweak
+
+The ID is what the script uses: `-Apply power.ultimate`, `-Revert power.ultimate`.
+
+<TweakIndex />
+
+**Risk** is what happens if the tweak is wrong for a given machine, not how hard it is
+to undo — everything here is reversible. **Evidence**: `Documented` means a vendor or
+Microsoft document describes the mechanism; `Measurable` means the effect shows up in a
+capture on the machine it was tested on.
+
+Tweaks that did not survive the same checks are under
+[Debunked & rejected](../reference/debunked/).

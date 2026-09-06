@@ -1,0 +1,181 @@
+---
+title: Power & boot
+description: Power plan, PCIe link power management, USB selective suspend and Fast Startup.
+sidebar:
+  order: 1
+tags:
+  - power
+  - latency
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Windows power management is the largest source of avoidable latency on a desktop.
+Every setting here trades watts for responsiveness — correct on a machine plugged
+into a wall, wrong on a laptop running on battery.
+
+<span id="power.ultimate" class="tc-anchor" />
+
+## Ultimate Performance power plan — power.ultimate
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+Windows ships a hidden Ultimate Performance scheme that biases toward high
+processor performance and less parking. On consumer SKUs it is commonly made
+visible by duplicating it.
+
+```powershell
+powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
+powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+```
+
+**Cost:** higher idle power draw and idle temperatures — tens of watts at the desktop
+on a 16-core part. Cores never park, so there is no wake-up ramp when work arrives.
+
+**Not what it does:** no overclocking, and no peak framerate increase in a GPU-bound
+game. Any benefit is limited to burst/ramp behaviour and must be demonstrated with
+frame-time captures.
+
+:::caution[Unparked is not the same as idle-disabled]
+Unparked means the parking *algorithm* is off — `CPMINCORES` at 100 %. Cores still
+enter C-states. The setting that stops that is `IDLEDISABLE`, which pins every core at
+C0 and spends the thermal headroom boost depends on. Reference performance power plans
+strip parking, selective suspend, sleep and disk power savings while leaving processor
+idle alone.
+
+Where deep C-state wake latency is a demonstrated problem, the surgical option is the
+hidden pair **Processor idle demote threshold** and **Processor idle promote
+threshold** set to 100, holding cores no deeper than C1.
+:::
+
+:::note
+Not for laptops. Use **High Performance** while plugged in and leave the battery
+profile alone.
+:::
+
+A variation on this plan — minimum processor state at 5 % so idle cores clock down, a
+narrower boost band, USB suspend off, display never off — is exported as
+[`CS2 Zen3 Frametime.pow`](../../tools/cs2-zen3-frametime/).
+
+<span id="power.pcie-aspm-off" class="tc-anchor" />
+
+## PCIe Active State Power Management — power.pcie-aspm-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+ASPM lets the PCIe link drop into a low-power state between transfers; waking it adds
+a small device- and platform-dependent delay. Relevant to a specific DPC or link-wake
+problem. LatencyMon attribution alone does not prove disabling ASPM is the fix.
+
+```powershell
+powercfg /setacvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 0
+powercfg /setactive SCHEME_CURRENT
+```
+
+The setting is a three-way index, not a switch:
+
+| Value | Name | Effect |
+| --- | --- | --- |
+| `0` | Off | No ASPM on any link. |
+| `1` | Moderate | Links may attempt L0s. |
+| `2` | Maximum | Links may attempt L0s and L1. |
+
+Balanced's AC default is **Moderate**, so most desktops are not at Maximum unless an
+OEM or tweak script set it there. Where one device is the problem rather than the
+platform, `ASPMOptOut` under that device's `Device Parameters` key exempts it without
+changing the plan (requires PCIe base spec 1.1 or later).
+
+**Cost:** a few watts at idle.
+
+<span id="power.usb-suspend-off" class="tc-anchor" />
+
+## USB selective suspend — power.usb-suspend-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+Windows suspends idle USB ports. Invisible on a mouse or keyboard; on an audio
+interface, DAC or capture device it appears as a click, a dropout, or a device that
+vanishes after a period of idle.
+
+A per-device equivalent exists in Device Manager under **Power Management → Allow the
+computer to turn off this device to save power** on every USB Root Hub. The power plan
+value is the global switch and the one the script changes.
+
+```powershell
+# the plan setting has no powercfg alias, so it is addressed by GUID
+powercfg /setacvalueindex SCHEME_CURRENT `
+  2a737441-1930-4402-8d77-b2bebba308a3 `
+  48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0
+powercfg /setactive SCHEME_CURRENT
+```
+
+Two further layers apply when the plan setting alone does not fix a device:
+
+- A second **global** plan setting, *Hub Selective Suspend Timeout*
+  (`0853a681-27c8-4100-a2fd-82013e970683`, milliseconds, max 100000), sets the idle
+  timeout for all USB hubs.
+- The **per-device** layer lives under
+  `HKLM\SYSTEM\CurrentControlSet\Enum\<enumerator>\<deviceID>\<instanceID>\Device Parameters`
+  as `SelectiveSuspendEnabled`, `DeviceIdleEnabled`, `DefaultIdleState` and
+  `SelectiveSuspendTimeout` (5000 ms default). `SystemWakeEnabled` and
+  `UserSetDeviceIdleEnabled` decide whether the Device Manager checkboxes appear,
+  which is why some devices have the tab and others do not.
+
+:::note[Why the audio symptom is this setting and not the audio driver]
+`USBAUDIO.sys` registers its own idle detection, but its AC default is
+`PerformanceIdleTime = 0`, so a USB audio device on wall power never idles out of D0
+by that path. The 30-second timer (`ConservationIdleTime`) applies only on battery, and
+24H2 added separate Modern-Standby timers on top. On a plugged-in machine, clicks and
+vanishing interfaces trace to selective suspend and hub power-off.
+:::
+
+<span id="system.fast-startup-off" class="tc-anchor" />
+
+## Fast Startup (hiberboot) — system.fast-startup-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={true} />
+
+With Fast Startup on, **Shut down** does not shut down. Windows signs the user out,
+hibernates the kernel session to `hiberfil.sys`, and restores it on next power-on.
+Driver state, service state and kernel memory carry over across what looks like a
+clean boot.
+
+This is why **Restart** fixes problems that **Shut down** followed by power-on does
+not: Restart performs a full boot.
+
+```powershell
+# what the script writes
+HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power\HiberbootEnabled = 0
+```
+
+`shutdown /s /t 0` performs a full shutdown even with Fast Startup on — a one-off
+clean boot without changing the setting.
+
+:::caution[A policy beats this value]
+The kernel checks the group policy **Require use of fast startup**
+(`HKLM\SOFTWARE\Policies\Microsoft\Windows\System\HiberbootEnabled`) *before* it
+reads the Session Manager value, and a non-zero policy wins. On a domain-joined or
+otherwise policy-managed machine the script's write can be silently overridden;
+check the policy key if the setting does not appear to take.
+
+Sibling values in the same key (`HybridBootAnimationTime`, `HiberIoCpuTime`,
+`ResumeCompleteTimestamp`) are counters written by Windows. Changing them does
+nothing.
+:::
+
+**Cost:** boot takes a few seconds longer; barely perceptible on NVMe.
+
+**Kept:** hibernate and sleep still work. This disables the hybrid shutdown behaviour,
+not hibernation. `powercfg /h off` achieves the same thing but also discards
+hibernate, **hybrid sleep** and the hiberfil.sys disk space.
+
+Where disk space is the motivation:
+
+```powershell
+powercfg /h /type reduced   # ~20 % of RAM, fast startup only
+powercfg /h /type full      # ~40 % of RAM, also backs hibernate and hybrid sleep
+```
+
+A reduced hiberfile keeps Fast Startup working while halving the file — the opposite
+trade from this tweak. Apply one, not both.

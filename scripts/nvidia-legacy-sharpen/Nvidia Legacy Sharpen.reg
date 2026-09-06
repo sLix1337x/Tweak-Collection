@@ -1,0 +1,17 @@
+Windows Registry Editor Version 5.00
+
+; Brings the legacy "Image Sharpening" option back to NVIDIA Control Panel.
+; Reboot afterwards. Undo: "Nvidia Legacy Sharpen (undo).reg".
+;
+; Drivers from the 566 branch onward read their parameters under \Parameters;
+; older drivers read the key directly under nvlddmkm. Both are written so the
+; file works either side of that change. CurrentControlSet is the live control
+; set, so ControlSet001 is not written separately.
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services
+vlddmkm\Parameters\FTS]
+"EnableGR535"=dword:00000000
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services
+vlddmkm\FTS]
+"EnableGR535"=dword:00000000

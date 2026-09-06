@@ -1,0 +1,218 @@
+---
+title: Services & bloat
+description: Which services are safe to disable, which are not, and why most service lists are dangerous.
+sidebar:
+  order: 5
+tags:
+  - services
+  - privacy
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+One tweak, three services, and a printer check. None is an FPS or 1 % low
+optimization; each is a hardware, attack-surface or feature-usage decision.
+
+<span id="bloat.services" class="tc-anchor" />
+
+## bloat.services
+
+<TweakMeta risk="Medium" evidence="Documented" reboot={false} />
+
+| Service | Display name | Why it goes |
+| --- | --- | --- |
+| `RetailDemo` | Retail Demo Service | Kiosk mode for store display machines. Never runs on a real PC. |
+| `MapsBroker` | Downloaded Maps Manager | Started on demand by any app reading downloaded offline maps, not only the Maps app. |
+| `Spooler` | Print Spooler | Printing. **Skipped automatically if a printer is installed.** |
+
+The script captures each service's startup type and running state before changing
+anything, so revert restores what was there rather than a guessed default.
+
+:::note[MapsBroker is not the map-download switch]
+Disabling the service stops apps *reading* offline maps. Downloading and updating them
+is governed separately by the policies `AutoDownloadAndUpdateMapData` and
+`AllowUntriggeredNetworkTrafficOnSettingsPage` under
+`HKLM\SOFTWARE\Policies\Microsoft\Windows\Maps`, the persisted settings
+`AutoUpdateEnabled` and `UpdateOnlyOnWifi` (both default on), and the scheduled tasks
+`MapsUpdateTask` and `MapsToastTask`.
+:::
+
+### The Print Spooler is a special case
+
+Disabling it on a machine with a printer breaks printing, so the script enumerates
+installed printers first and leaves the spooler alone if it finds one that is not
+Microsoft Print to PDF, XPS Document Writer, OneNote or Fax.
+
+The rationale on a printerless machine is attack surface, not performance: the spooler
+runs as SYSTEM and is the component behind the PrintNightmare family of
+privilege-escalation vulnerabilities.
+
+A machine that will never print can also drop `PrintNotify`, `PrintWorkflowUserSvc`,
+`PrintScanBrokerService`, `PrintDeviceConfigurationService`, `McpManagementService`
+(Universal Print) and the `usbprint` driver. `Spooler` itself depends on `RPCSS` and
+`http`.
+
+Where the machine does print but the network-facing parts are unused, the policy route
+reaches them without touching the service:
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Printers
+  DisableHTTPPrinting   = 1
+  DisableWebPnPDownload = 1
+```
+
+## Why this list is so short
+
+The typical service-disabling list includes:
+
+| Service | What disabling it does |
+| --- | --- |
+| `WSearch` | Start menu search and Explorer search stop working properly. |
+| `SysMain` (Superfetch) | Was bad on spinning disks. On NVMe it is close to free, and disabling it takes memory compression and page combining with it. |
+| `wuauserv` | No security updates. |
+| `WaaSMedicSvc` | Windows repairs this and turns it back on. |
+| `AudioEndpointBuilder` | Audio devices stop being detected. |
+| `BFE` (Base Filtering Engine) | Windows Firewall and IPsec stop working, along with everything built on them. |
+| `Themes` | Breaks visual styles and, on some builds, taskbar rendering. |
+
+Most appear as **OK to disable** in the table these lists quote from: Microsoft's
+guidance for *IoT* devices. The current revision of that table marks `SysMain`,
+`WaaSMedicSvc` and `BFE` **Don't disable**, so the copies are both applying IoT
+guidance to a desktop and no longer matching their source. Full list and provenance:
+[service reference](../../reference/service-reference/).
+
+**`SysMain` is not just prefetch.** It hosts the MMAgent configuration path:
+`Enable-MMAgent` / `Disable-MMAgent` route through a CIM provider in `sysmain.dll`
+that sets an administrative bit under the `Superfetch` key and restarts the service.
+With SysMain disabled the `MemCompression` process is never created, so **memory
+compression and page combining stop entirely**. `EnableSuperfetch` becomes a no-op in
+that state; `EnablePrefetcher` may still be read by the kernel. Check with
+`Get-MMAgent`.
+
+**`BFE`'s blast radius is wider than the firewall.** Xbox Live networking
+(`XboxNetApiSvc`), Internet Connection Sharing (`SharedAccess`), the DirectAccess
+connectivity assistant (`NcaSvc`) and Defender's network-inspection driver
+(`WdNisDrv`) all declare a dependency on it. The claim that BFE cannot be restarted
+without a reboot is overstated — dependants have to come back in order.
+
+**`WaaSMedicSvc` is half the reason Windows Update returns.** The other half is the
+task scheduler: `\Microsoft\Windows\WindowsUpdate\Scheduled Start` runs
+`sc.exe start wuauserv`, and `\Microsoft\Windows\Time Synchronization\SynchronizeTime`
+starts `w32time` the same way.
+
+:::tip[Removing indexing without breaking the shell]
+Removing `WSearch` requires a *replacement*, not a deletion: Everything (voidtools)
+for file search plus an alternative Start menu, with `DisableSearch` /
+`DisableWebSearch` under `HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search` to
+stop the stock one. Without a replacement, Start menu search and CmdPal's file-search
+extension are lost with nothing gained.
+:::
+
+An idle Windows service costs approximately nothing. `svchost` processes at 0 % CPU
+with a few megabytes of paged-out working set are not a source of slowdown.
+
+The related "reduce the number of svchost processes" tweak points the wrong way.
+Windows splits services into one process each only when physical memory is at or above
+the `SvcHostSplitThresholdInKB` client default of 3670016 KB (≈3.5 GB), compared by
+the service control manager at startup; below that they are grouped anyway. Forcing
+them back together loses the process isolation the split provides.
+
+Disable a service for a specific reason — attack surface, a known misbehaviour, absent
+hardware.
+
+## Candidates the script leaves to the operator
+
+None of these is in `bloat.services`: each depends on hardware that may not be present
+or a feature that may not be in use. All are marked `OK to disable` in Microsoft's
+table and all are free on a machine that does not use them.
+
+Set them to **Manual** first. A Manual service that nothing requests never starts, and
+it can be restored without a reboot.
+
+| Service | Display name | What is lost |
+| --- | --- | --- |
+| `bthserv`, `BthAvctpSvc` | Bluetooth Support, AVCTP | Bluetooth entirely: pairing, audio, controllers. Only if the machine has no Bluetooth device at all. |
+| `lfsvc` | Geolocation Service | Location for apps that ask, and automatic time zone. |
+| `WalletService`, `SEMgrSvc` | Wallet, Payments and NFC | Tap-to-pay. On a desktop with no NFC hardware, nothing. |
+| `PhoneSvc`, `SmsRouter` | Phone Service, SMS Router | Phone Link calls and text messages. |
+| `icssvc` | Windows Mobile Hotspot | Sharing the connection with other devices. |
+| `SharedAccess` | Internet Connection Sharing | The same thing by the older mechanism. Also a documented attack surface. |
+| `WebClient` | WebClient | WebDAV drive mapping. Remotely reachable, with a vulnerability history. |
+| `ScardSvr` | Smart Card | Smart-card logon. Corporate laptops only. |
+| `WMPNetworkSvc` | Windows Media Player Network Sharing | UPnP/DLNA sharing from Windows Media Player. WMP Legacy still ships as an optional feature. |
+| `wisvc` | Windows Insider Service | Insider builds. No performance change either way. |
+| `PcaSvc` | Program Compatibility Assistant | Install-failure prompts and shim application. Feeds the application-compatibility telemetry pipeline, so a privacy decision as much as a performance one. |
+
+**`RasMan`** reads as dial-up and Microsoft marks it `OK to disable`, but the built-in
+VPN client and several third-party VPN clients depend on it.
+
+Two of these have a lighter option than disabling the service:
+
+- **Bluetooth.** `Connectivity\AllowBluetooth = 0` through the PolicyManager CSP
+  greys the radio out at the source, which is easier to reverse than disabling
+  `bthserv` plus the whole `BthA2dp`/`BthEnum`/`BthLEEnum`/`BTHPORT`/`BTHUSB`/
+  `RFCOMM` driver stack and the per-user `BluetoothUserService`.
+- **ICS and Mobile Hotspot.** ICS only does anything when the machine has two or
+  more network connections, so on a single-NIC desktop the service is already
+  inert. `NC_ShowSharedAccessUI` under
+  `HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections` removes the
+  Sharing tab without touching `icssvc`, `SharedAccess` or `ALG`.
+
+## What breaks when a service list is applied wholesale
+
+| Service | Symptom when off |
+| --- | --- |
+| `BFE` + `mpssvc` | Firewall rules stop applying, along with Xbox Live networking, ICS and Defender's network inspection. Restoring means bringing the dependants back in order. |
+| `appinfo` | UAC elevation fails. Nothing requiring administrator rights starts. |
+| `AppXSvc` | Store-packaged apps stop working, including third-party ones that ship that way, such as PowerToys' CmdPal launcher. (Disabling `ShellHWDetection` for Autoplay has a related symptom: CmdPal stops starting at boot.) |
+| `pla`, `PerfHost`, `wmiApSrv` | Performance counter collection and data collector sets stop working, so perfmon shows nothing. WPR still records — it is an ETW consumer, not a counter consumer. |
+| `WlanSvc` | No Wi-Fi. |
+| `CapabilityAccessManagerSvc` | Camera and microphone permission handling. Apps are denied with no prompt. |
+| Xbox services | Game Pass, cloud saves and the Xbox overlay. Microsoft's IoT table marks these **Should be disabled**, which is kiosk guidance and inverted for a gaming desktop. |
+| Anti-cheat services | The protected game refuses to launch with a generic error. Vanguard, EAC and BattlEye all install as services. |
+
+## Services that look safe and are not
+
+Each row is reasonable on a specific machine and wrong as a general recommendation:
+
+| Service | Keep it if |
+| --- | --- |
+| Windows Biometric Service | Windows Hello is in use. Disabling it removes fingerprint and face sign-in. |
+| Network Connection Broker | Store apps are in use. It delivers their background notifications. |
+| Connected Devices Platform Service | Phone Link or nearby sharing is in use. |
+| Geolocation Service | Anything is location-aware, including automatic time zone. |
+| Parental Controls | Family Safety is set up on the machine. |
+| Radio Management Service | The machine has Wi-Fi or Bluetooth to put into airplane mode. |
+| Program Compatibility Assistant | Rarely needed on current software, and nearly free to leave running. |
+
+None is in the script. Disable by hand where the row applies:
+
+```powershell
+Set-Service -Name lfsvc -StartupType Disabled   # Geolocation
+Set-Service -Name PcaSvc -StartupType Disabled  # Program Compatibility Assistant
+```
+
+## Why not msconfig
+
+> Disable non-Microsoft services in msconfig
+
+The "hide all Microsoft services" checkbox does not distinguish between a vendor's
+telemetry uploader and the driver service a GPU, audio interface or anti-cheat needs.
+`msconfig` also keeps no record of what it changed.
+
+Use **Autoruns** from Sysinternals to audit what starts with the machine. It shows the
+publisher, signature status and exact registry key or task, and individual entries can
+be re-enabled from it.
+
+## Scheduled tasks undo service changes
+
+`\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser` starts
+`InventorySvc`; `\Microsoft\Windows\WindowsUpdate\Scheduled Start` starts `wuauserv`;
+`\Microsoft\Windows\Time Synchronization\SynchronizeTime` starts `w32time`. Others do
+work on their own: `DiskCleanup\SilentCleanup` runs
+`cleanmgr.exe /autocleanstoragesense`, plus `ScheduledDefrag`, `RegIdleBackup`, the
+Update Orchestrator's `usoclient` tasks, `MapsUpdateTask`, and the Customer Experience
+Improvement Program set (Consolidator, UsbCeip).
+
+`Get-ScheduledTask | Where-Object State -eq 'Ready'` with the action column inventories
+what runs on a machine and explains why a disabled service is running again.

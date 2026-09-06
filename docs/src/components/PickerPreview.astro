@@ -1,0 +1,34 @@
+---
+/**
+ * The interactive picker, drawn as a terminal window. The box art is generated at
+ * the same column widths Get-FrameLayout uses in Tweaks.ps1, so this cannot drift
+ * away from what the script actually prints.
+ */
+---
+
+<div class="tc-term not-content" role="img" aria-label="The interactive tweak picker running in a terminal, showing tweaks grouped by category with checkboxes and an applied column.">
+  <div class="tc-term-bar" aria-hidden="true">
+    <i></i><i></i><i></i>
+    <span>Windows PowerShell (Administrator)</span>
+  </div>
+  <pre aria-hidden="true"><span class="b">╔══════════════════════════════════════════════════════════╗</span>
+<span class="b">║</span> Tweak Collection              <span class="dim">    3 selected · 7 applied </span><span class="b">║</span>
+<span class="b">╟───────────────────────────────────────────── 1-14 of 27 ─╢</span>
+<span class="b">║</span><span class="hd">  POWER                                                   </span><span class="b">║</span>
+<span class="b">║</span><span class="sel"> [x] </span>power.ultimate                       <span class="dim">Low     </span><span class="on">applied </span><span class="b">║</span>
+<span class="b">║</span><span class="dim"> [ ] </span>power.pcie-aspm-off                  <span class="dim">Low     </span><span class="on">        </span><span class="b">║</span>
+<span class="b">║</span><span class="hd">  LATENCY                                                 </span><span class="b">║</span>
+<span class="b">║</span><span class="cur"><span class="sel"> [x] </span>latency.gamedvr-off                  <span class="dim">Low     </span><span class="on">        </span></span><span class="b">║</span>
+<span class="b">║</span><span class="dim"> [ ] </span>latency.network-throttling-off       <span class="dim">Low     </span><span class="on">applied </span><span class="b">║</span>
+<span class="b">║</span><span class="hd">  NET                                                     </span><span class="b">║</span>
+<span class="b">║</span><span class="dim"> [ ] </span>net.nagle                            <span class="warn">Medium  </span><span class="on">        </span><span class="b">║</span>
+<span class="b">║</span><span class="hd">  PRIVACY                                                 </span><span class="b">║</span>
+<span class="b">║</span><span class="sel"> [x] </span>privacy.telemetry                    <span class="dim">Low     </span><span class="on">applied </span><span class="b">║</span>
+<span class="b">╟──────────────────────────────────────────────────────────╢</span>
+<span class="b">║</span><span class="hd">  Disable Game DVR / background recording                 </span><span class="b">║</span>
+<span class="b">║</span><span class="dim">  Documented · no reboot                                  </span><span class="b">║</span>
+<span class="b">╟──────────────────────────────────────────────────────────╢</span>
+<span class="b">║</span><span class="dim">  ↑↓ move   space select   a all   n none   c category    </span><span class="b">║</span>
+<span class="b">║</span><span class="dim">  enter apply   d dry-run   r revert   s refresh   q quit </span><span class="b">║</span>
+<span class="b">╚══════════════════════════════════════════════════════════╝</span></pre>
+</div>

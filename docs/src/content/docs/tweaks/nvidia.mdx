@@ -1,0 +1,308 @@
+---
+title: NVIDIA
+description: MSI mode, telemetry tasks, and why every RM* registry value was removed.
+sidebar:
+  order: 6
+tags:
+  - nvidia
+  - latency
+  - registry
+  - anti-cheat
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Two tweaks survive here out of the twenty-odd registry values a typical NVIDIA tweak
+script writes. The rejected values are documented below.
+
+<span id="nvidia.msi-mode" class="tc-anchor" />
+
+## Message Signalled Interrupts — nvidia.msi-mode
+
+<TweakMeta risk="Medium" evidence="Documented / Measurable" reboot={true} />
+
+**Line-based** interrupts share physical IRQ lines, so the OS polls every device on
+the line to identify the signaller. **MSI** lets the device write its own interrupt
+vector directly, with no sharing and no polling.
+
+Most modern GPUs support MSI; not all enable it by default, and NVIDIA driver
+installs have historically reset it to line-based.
+
+**On RTX 30 and 40 series cards the driver already sets it.** The line-based default
+mainly survives on Maxwell, Pascal and Turing desktop cards. On current hardware the
+step is *verification*: read the value and confirm it is `1`. Forcing the mode where
+it is already correct changes nothing, and on badly routed boards has been reported
+to worsen interrupt conflicts.
+
+```text
+HKLM\SYSTEM\CurrentControlSet\Enum\PCI\<device>\Device Parameters\Interrupt Management\MessageSignaledInterruptProperties
+  MSISupported = 1
+```
+
+On systems using line-based interrupts this may reduce interrupt/DPC overhead. It is
+not a guaranteed frame-time improvement.
+
+The same key holds two read-only neighbours: `MessageNumberLimit` caps how many MSI
+messages the device may request, and a `Range\<n>` subkey (`StartingMessage`,
+`EndingMessage`, `MessagesPerProcessor`) describes their distribution.
+
+:::tip[Verifying the effect]
+Average framerate does not measure this. Capture the interrupt path directly:
+
+```powershell
+wpr -start CPU.light -start GPU.light
+# reproduce the workload for 30-60 seconds
+wpr -stop nvidia-msi.etl
+```
+
+Open the trace in Windows Performance Analyzer and compare **DPC/ISR duration by
+module** for `nvlddmkm.sys` per core, before and after. That is the quantity the
+tweak changes.
+:::
+
+:::caution[Check after every driver update]
+NVIDIA driver installs can reset this value. Re-check `MSISupported` after every
+driver update.
+:::
+
+:::danger[The one thing here that can stop a boot]
+On rare hardware and chipset combinations, MSI mode causes a black screen at boot.
+If that happens, boot into Safe Mode and revert (see
+[undoing a tweak](../../reference/undoing-a-tweak/#if-the-machine-will-not-boot)).
+:::
+
+**Interrupt priority:** `DevicePriority` raises the GPU's interrupt priority to High.
+The value is real — a REG_DWORD under `Interrupt Management\Affinity Policy`, default
+0, mapping to the WDK IRQ priority table where High is IRQL 12 and Normal is IRQL
+5–11. It has no documented or measured benefit for a desktop GPU, and the
+instability claim attached to it has no authoritative source either. Not applied.
+
+<span id="nvidia.telemetry-tasks" class="tc-anchor" />
+
+## Scheduled tasks — nvidia.telemetry-tasks
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+NVIDIA installs scheduled tasks for crash reporting, telemetry monitoring, update
+polling and profile updating. They run on timers and at logon.
+
+The script matches them by name pattern:
+
+```text
+NvTmRep*  NvTmMon*  NvDriverUpdate*  NVIDIA GeForce Experience*
+NvProfileUpdater*  NvNodeLauncher*
+```
+
+`NvTmMon` reports at logon and hourly, `NvTmRepOnLogon` at logon, `NvTmRep` daily at
+12:25. All three run `NvTmRep.exe`, the crash and telemetry reporter.
+
+Circulating scripts disable these by full name including a hardcoded GUID
+(`{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8}`). That GUID is not a per-machine identifier
+but a constant embedded in the GeForce Experience-era task names. On recent drivers
+**the tasks are no longer created at all**. Either way those `schtasks` calls fail
+silently — the scripts redirect output to `nul` and report success.
+
+**Cost:** no automatic driver-update notifications; drivers must be checked manually.
+
+:::note[The "NVIDIA telemetry" registry block is also dead]
+A second set of values travels with these tasks:
+
+```text
+HKLM\SOFTWARE\NVIDIA Corporation\Global\FTS
+  EnableRID44231 = 0   EnableRID64640 = 0   EnableRID66610 = 0
+```
+
+Those value names are string-verifiably absent from current driver binaries — the same
+check used for [MMCSS](../latency/#latency.mmcss-games). Writing them creates registry
+keys nothing reads. The Control Panel opt-out is a different value:
+
+```text
+HKCU\Software\NVIDIA Corporation\NVControlPanel2\Client
+  OptInOrOutPreference = 0
+```
+
+The NVCPL telemetry event it governs collects driver version, OS version, system type
+(desktop / laptop / Optimus) and GPU names. A debloated driver install covers this;
+see below.
+:::
+
+## The RM* block, in full
+
+Circulating GPU tweak scripts write twenty-two values into the display driver's class
+key after prompting for a GPU class GUID by hand. None survives checking.
+
+:::note[The values are documented; the circulating numbers are not derived]
+These are NVIDIA's internal **resource manager** parameters, and NVIDIA's definition
+files name every field, its bit range and its encodings. Outside researchers have
+converted those definitions to machine-readable form — around 967 entries, covering
+every value below — with field names, `MODS`/VBIOS commentary and chip references
+consistent with NVIDIA's open GPU kernel modules.
+
+- **Decoded, the circulating magic numbers are "disable everything" masks.**
+  `0x55555555` is DISABLED in every two-bit ELCG field, `0x11111111` is DISABLE in
+  every four-bit BLCG field, `0xFFF` is all twelve ELPG engines off — repeated
+  nibbles, not measurements.
+- **The values drift between scripts.** `RMSlcg` appears as both `0x3FFF3` and
+  `0x3FFFF`, `RMFspg` as both `5` and `15`. Derived values would not diverge.
+- **No frame-time capture is published with any of them.** The researchers who
+  decoded the definitions label their own presets "experimental… not
+  recommendations", and ship no value at all for `RMBandwidthFeature`.
+:::
+
+### The HDCP block
+
+```text
+RMHdcpKeyglobZero = 1
+RmDisableHdcp22   = 1
+RMSkipHdcp22Init  = 1
+```
+
+These disable HDCP, the copy protection handshake on the display output. No
+performance effect. They break protected content playback: Netflix, Disney+, Amazon
+Prime Video and other DRM-protected streams drop to low resolution or refuse to play.
+A browser playing protected video at reduced resolution is the usual first symptom.
+
+Per NVIDIA's definitions: `RMHdcpKeyglobZero` forces the HDCP key blob to zero, for
+SKUs without fused HDCP keys — a bring-up knob. `RmDisableHdcp22` "disables HDCP22
+feature". `RMSkipHdcp22Init` is a workaround pending signed HDCP 2.2. None mentions
+performance. The Control Panel's "View HDCP status" page reports the display as
+unsupported once applied.
+
+### The clock-gating block
+
+```text
+RMElcg = 0x55555555   RMBlcg = 0x11111111   RMSlcg = 0x3FFF3
+RMElpg = 0xFFF        RMElpgStateOnInit = 3  RMFspg = 5
+```
+
+Engine-level, block-level and second-level clock gating (ELCG / BLCG / SLCG), plus
+engine-level and floorsweep power gating (ELPG / FSPG). Per NVIDIA's definitions these
+are per-engine bit fields: ELCG uses two bits per engine (GR at bits 1:0, CE0 at 5:4,
+PDEC at 7:6) with 0 = VBIOS default and 1 = disabled; BLCG uses four bits per engine
+with DISABLE/ENABLE/IDLE/STALL/QUIESCENT encodings; SLCG and ELPG use one bit each.
+
+The values above decode to "disable on every engine", uniformly.
+
+:::caution[The block is probably inert]
+NVIDIA's comments state that the `*CG` registry keys take effect only when the
+matching field in **`RmPowerFeatures`** is set to per-engine override (value `2`).
+None of the circulating scripts set `RmPowerFeatures`.
+:::
+
+Where they do apply, disabling clock gating keeps parts of the GPU powered that would
+otherwise idle, raising heat and power draw. Because modern GPUs boost on thermal and
+power headroom, spending both on idle engines can *lower* achieved clocks under load.
+
+### The bandwidth block
+
+```text
+RMBandwidthFeature  = 1896072192
+RMBandwidthFeature2 = 1
+```
+
+1896072192 is `0x7103C400`, not the `0x71007100` that circulates alongside it.
+
+`RMBandwidthFeature` is a **display bandwidth** feature override. Its sixteen fields
+cover scaler amortisation (spreading the scaler's input fetch across a raster line to
+need less hubclk/dispclk), isochronous-critical behaviour and similar; many are marked
+deprecated, and NVIDIA's comment on the scaler field notes the feature does not exist
+on chips before "Orin" — Tegra-era text. `RMBandwidthFeature2` overrides memory-pool
+compression and advanced-versus-legacy fetch metering (Ampere and later enable
+advanced metering in hardware by default).
+
+Display bandwidth is not frame rate. Researchers who ship presets for the rest of the
+RM block ship none for this one.
+
+### The ASPM and power block
+
+```text
+RMEnableASPMAtLoad = 0        RMEnableASPMDT = 0
+RMDisableGpuASPMFlags = 1     RmOverrideSupportChipsetAspm = 0
+RMDeepL1EntryLatencyUsec = 1  RmMIONoPowerOff = 1
+DisableDynamicPstate = 1      EnableMClkSlowdown = 0
+RMPcieLtrOverride = 2
+```
+
+The intent — stopping the GPU's PCIe link from sleeping — is legitimate, but
+[`power.pcie-aspm-off`](../power/#pcie-active-state-power-management--powerpcie-aspm-off)
+does it through the documented Windows power subsystem, applies to every PCIe device,
+and reverts cleanly.
+
+Decoded, most of this block is test-bench instrumentation:
+
+| Value | What NVIDIA's definition says |
+| --- | --- |
+| `RMPcieLtrOverride = 2` | Bits 1:0 are ALLOW_LTR: 0 default, 1 enable, **2 disable**. Stops the GPU sending PCIe Latency Tolerance Reporting messages — the mechanism behind the block's stated intent. |
+| `RMEnableASPMAtLoad` | "Intended for testing purpose", for enabling ASPM on VBIOSes with no or a single P-state. |
+| `RmOverrideSupportChipsetAspm` | Also flagged as intended for testing. |
+| `RMDeepL1EntryLatencyUsec` | Boolean override of the DeepL1 entry delay; forcing 1 µs makes DeepL1 effectively unenterable. |
+| `RmMIONoPowerOff` | Keeps MIOs (NVLink / multi-chip IO blocks) powered. Not present on a single consumer GPU. |
+
+Polarity also drifts: presets published elsewhere use `RMEnableASPMDT = 1` and
+`RMDisableGpuASPMFlags = 3` against the `0` and `1` above.
+
+`DisableDynamicPstate` is defined as "1 = disable dynamic P-State / adaptive clocking,
+0 = leave alone". It pins the GPU out of its low-power performance states, so the card
+sits at high clocks at idle — higher idle temperature and less thermal headroom for
+boost.
+
+### The two adjacent keys that are not settings
+
+`nvlddmkm\State` is the driver's **persistent state store**: the display database, the
+HDCP revocation list and the timeout-detection records, written by the driver for its
+own use. The hex values scripts lift out of it are serialised state; rewriting them
+corrupts what the driver reads back.
+
+`nvlddmkm\Parameters` holds documented but diagnostic knobs. `LogEventEntries`,
+`LogErrorEntries`, `LogWarningEntries` and `LogPagingEntries` size the driver's
+in-memory event logs, 512 entries each on a retail driver. Shrinking a log buffer is
+not a frame-time change; it removes crash-investigation data.
+
+### The write-to-both-keys problem
+
+Circulating scripts write every line twice, once to `\0000` and once to `\0001`, and
+mix `CurrentControlSet` with `ControlSet001` between lines. On a single-GPU system
+`\0001` is usually a different device or does not exist.
+
+### The user-supplied GUID
+
+The scripts prompt:
+
+```text
+Enter GPU class GUID:>
+```
+
+then interpolate the input into twenty-two `reg add` paths with no validation and all
+output suppressed. A typo produces a silent partial write with no revert.
+
+The Display class GUID is a constant, and the correct subkey is the one whose
+`DriverDesc` names the vendor:
+
+```powershell
+Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}' |
+  Where-Object { (Get-ItemProperty $_.PSPath -Name DriverDesc -EA 0).DriverDesc -like '*NVIDIA*' } |
+  Select-Object -ExpandProperty PSPath
+```
+
+## What to do instead
+
+A leaner NVIDIA install is achieved at install time, not by writing registry values
+afterwards:
+
+1. **DDU in safe mode** if the machine has driver history worth clearing.
+2. **NVCleanstall**, deselecting unused components. See the
+   [driver install guide](../../guides/nvidia-driver-install/).
+
+Driver-debloat scripts go further, stripping the package to `Display.Driver`, `NVI2`,
+`setup.cfg` and `setup.exe` and editing telemetry, EULA and web-link entries out of
+the installer's XML and CFG before running it. Modifying the *driver* package rather
+than the installer's options is what some anti-cheats flag. On a machine that plays
+protected titles, take the installer-telemetry option and leave the driver files
+alone.
+
+## The one NVIDIA registry value worth writing
+
+`EnableGR535 = 0` restores the driver-side **Image Sharpening** option in the Control
+Panel on drivers that moved it behind the NVIDIA App. A preference rather than a
+performance tweak, so it ships as a pair of `.reg` files with the
+[tools](../../tools/nvidia-legacy-sharpen/).

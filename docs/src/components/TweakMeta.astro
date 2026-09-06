@@ -1,0 +1,22 @@
+---
+/**
+ * The metadata strip under a tweak's heading: risk, evidence level, reboot.
+ * Keeps every tweak page reporting the same three things in the same order.
+ */
+interface Props {
+  risk: 'Low' | 'Medium' | 'High';
+  evidence: string;
+  reboot?: boolean;
+}
+
+const { risk, evidence, reboot = false } = Astro.props;
+---
+
+<div class="tc-meta not-content" role="group" aria-label="Tweak metadata">
+  <span class="tc-key">Risk</span>
+  <span class={`tc-badge tc-badge-${risk.toLowerCase()}`}>{risk}</span>
+  <span class="tc-key">Evidence</span>
+  <span class="tc-badge tc-badge-plain">{evidence}</span>
+  <span class="tc-key">Reboot</span>
+  <span class="tc-badge tc-badge-plain">{reboot ? 'required' : 'not needed'}</span>
+</div>

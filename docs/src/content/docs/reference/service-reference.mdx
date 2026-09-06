@@ -1,0 +1,75 @@
+---
+title: Service reference
+description: All 266 Windows services with Microsoft's own recommendation, and why that recommendation was written for IoT devices rather than desktops.
+sidebar:
+  order: 5
+tags:
+  - services
+  - privacy
+---
+
+import ServiceTable from '../../../components/ServiceTable.astro';
+
+Every service in Microsoft's own configuration table, with its default startup
+type, Microsoft's recommendation, and what stops working when it is disabled.
+
+:::caution[This table is Microsoft's IoT guidance, not desktop guidance]
+The recommendations come from [Guidance on configuring system
+services](https://learn.microsoft.com/en-us/windows/iot/iot-enterprise/optimize/services),
+whose **Applies to** line lists Windows 11 IoT Enterprise, Windows 10 IoT
+Enterprise and IoT Enterprise LTSC 2021, and no general-client SKU. It is written
+for a device maker "building a fixed-function, specialized device".
+
+Microsoft publishes no equivalent table for desktop Windows 11. Service lists claiming
+"Microsoft says this is OK to disable" are quoting this page.
+:::
+
+A fixed-function device has no user, no printer, no Store apps and often no updates.
+On that device, disabling Windows Update and the audio endpoint builder is reasonable;
+on a desktop it is not, and both are marked `OK to disable` below. The **Desktop
+caveat** filter shows the eleven rows where the two cases diverge.
+
+<ServiceTable />
+
+## What the recommendations mean
+
+Microsoft's own definitions, condensed:
+
+| Value | Microsoft's meaning |
+| --- | --- |
+| **OK to disable** | Useful to some enterprises but not all; a security-focused enterprise that does not use it can disable it. |
+| **Don't disable** | Disabling it prevents specific roles and features from working correctly. |
+| **No guidance** | The effect "isn't fully evaluated", so the default should not be changed. Not a synonym for safe. |
+| **Already disabled** | Off by default; no policy needed. |
+| **Should be disabled** | Should never be enabled on a well-managed enterprise system. |
+
+`No guidance` means unexamined, not harmless.
+
+## Three rows to distrust
+
+The table is transcribed faithfully and inherits the source's problems:
+
+- **`AJRouter`**: AllJoyn was [deprecated in August
+  2023](https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features)
+  and the service is absent from current Windows 11 builds. Nothing to disable.
+- **`DiagTrack`**: marked `OK to disable` here, but Microsoft's Server guidance
+  marks the same service `No guidance`, and for client Windows the documented way to
+  reduce telemetry is the **Allow diagnostic data** policy, not the service. This
+  collection disables both — see the
+  [privacy page](../../tweaks/privacy/#privacy.services-telemetry).
+- **Per-user services** (shown as `_*`): these exist once per signed-in session
+  with a random suffix, so `AarSvc` in the table is really `AarSvc_9f024` on a live
+  machine. The startup type is set on the template service in the registry; the
+  per-session instance cannot be configured in Services.msc.
+
+## Before disabling anything here
+
+1. **Manual before Disabled.** A Manual service that nothing requests never starts, and
+   the failure mode is recoverable.
+2. **One at a time, with a reboot.** Twenty at once means twenty suspects.
+3. **Expect no frame-rate change.** An idle service costs a few megabytes of paged-out
+   working set and no CPU — which is why
+   [this collection disables three](../../tweaks/services/).
+
+Microsoft's Server guidance states it more directly and applies here too: they do not
+recommend policies that disable services which are not disabled by default.

@@ -1,0 +1,124 @@
+---
+title: Counter-Strike 2
+description: CS2-specific tuning ordered by measured effect on frame times, with the VBS platform decision first.
+sidebar:
+  order: 1
+  label: Overview
+tags:
+  - cs2
+  - latency
+  - measurement
+  - anti-cheat
+---
+
+import { Steps, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Three properties determine how CS2 responds to tuning:
+
+- **CPU-bound at competitive settings.** From an RTX 3060 upward at 1080p low, the GPU
+  is not the limit. Most video settings and GPU tweaks do not address the constraint.
+- **Frame-gated simulation.** Sub-tick timestamps inputs precisely, but game state
+  advances only when a frame renders. Frame rate is part of movement and shooting
+  consistency; 1 % and 0.1 % lows are the relevant metrics, not average FPS.
+- **Difficult to benchmark.** The in-game counter varies between runs and the workshop
+  benchmark is sensitive to the moment capture starts. Most published comparisons are
+  [measurement error](./measuring/).
+
+## Ordering by effect
+
+Sorted by measured effect on 1 % lows.
+
+| Tier | What | Effect | Confidence |
+| --- | --- | --- | --- |
+| **1** | Memory profile (XMP/EXPO) enabled | Double-digit 1%-low difference against a JEDEC fallback | High |
+| **1** | VBS / HVCI decision — [platform-dependent](#the-vbs-decision) | ~5–10 % average, more on lows in CPU-bound scenes | High |
+| **1** | Driver hygiene; avoid known bad updates | Recovers whatever a regression removed | High |
+| **1** | [Frame-cap strategy](./frame-cap/) | 10–30 FPS of 1% low between limiters at the same cap | High |
+| **2** | Thermals and sustained clocks | Sets the floor for everything else | High |
+| **2** | [Thread placement](./system/#cpu-scheduling) on dual-CCD X3D | Fixes a specific stutter class; no effect on other hardware | Medium-high |
+| **2** | [MPO off](../guides/nvidia-driver-install/#multiplane-overlay-in-more-detail), where the symptom is present | Fixes flicker and alt-tab stutter; no effect otherwise | Medium-high |
+| **2** | [Interrupt hygiene](../tweaks/nvidia/#nvidia.msi-mode), after a DPC problem is diagnosed | Frame-time spikes, not average FPS | Medium |
+| **3** | HAGS, Game Mode, ReBAR, GSP, memory compression, standby-list tools | ±0–3 %, machine-specific; must be benchmarked | Medium |
+| **Myth** | Registry packs, dead cvars, quantum values, debloat ISOs | No effect or negative. [The list](./myths/) | High |
+
+The Tier 1 rows cover most of the software-side gain on a mid-range machine. The
+remaining rows are single-digit-percent refinements that must be verified on the
+specific hardware.
+
+## The VBS decision
+
+VBS and Memory Integrity cost measurable performance, and the platform determines
+whether the cost can be reclaimed.
+
+| Platform | Available |
+| --- | --- |
+| **Valve matchmaking / Premier only** | Memory Integrity off, optionally the whole VBS layer. Full recovery available. |
+| **FACEIT** | TPM 2.0, Secure Boot, IOMMU and VBS mandatory; Memory Integrity required for some accounts. VBS-related tweaks do not apply; tuning moves to layers that do not touch the hypervisor. |
+
+Mechanics, registry and BCD state, and side effects:
+[system page](./system/#vbs-and-hvci). Security background:
+[security guide](../guides/security/).
+
+## Build order
+
+<Steps>
+
+1. **Firmware.** Enable and validate the memory profile, update the BIOS, and apply the
+   platform items on the [BIOS pages](../guides/bios/worth-changing/).
+
+2. **Baseline.** Run one [CapFrameX capture](./measuring/) on the Dust2 benchmark and
+   save it. Without it, no later change can be shown to have worked.
+
+3. **Driver.** Install the current Game Ready branch via
+   [DDU/NVCleanstall](../guides/nvidia-driver-install/). One stuttery session follows
+   while the shader cache rebuilds.
+
+4. **Windows layer.** [Power](../tweaks/power/),
+   [Fast Startup](../tweaks/power/#system.fast-startup-off),
+   [Game DVR](../tweaks/latency/#latency.gamedvr-off), and the VBS decision above.
+
+5. **Frame cap.** [Select the limiter](./frame-cap/), not only the number.
+
+6. **Game.** [Launch options, video, network and audio](./game-settings/).
+
+7. **Measure again**, one variable at a time. Keep what moved the lows; revert the rest.
+
+</Steps>
+
+## The pages
+
+<CardGrid>
+  <LinkCard
+    title="Measuring CS2"
+    href="measuring/"
+    description="The run protocol that makes two benchmark numbers comparable."
+  />
+  <LinkCard
+    title="The frame cap"
+    href="frame-cap/"
+    description="Limiter choice, cap value, and the tested G-Sync configuration."
+  />
+  <LinkCard
+    title="Game settings"
+    href="game-settings/"
+    description="Launch options, video settings, network cvars and audio."
+  />
+  <LinkCard
+    title="System & driver"
+    href="system/"
+    description="VBS, scheduling, shader cache, HAGS, ReBAR and known update regressions."
+  />
+  <LinkCard
+    title="What does not work"
+    href="myths/"
+    description="The CS2-specific debunked list."
+  />
+</CardGrid>
+
+:::note[Sources]
+Figures are attributed in place: vendor documentation and independent outlets where
+available, disclosed-methodology community testing otherwise, and an explicit label
+where a claim rests on a single tester or on consensus. Where the community disagrees,
+both positions are shown. None of the figures are measurements from the machine being
+tuned; producing those is the purpose of the [measuring page](./measuring/).
+:::

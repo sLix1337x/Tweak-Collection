@@ -1,0 +1,106 @@
+---
+title: Privacy
+description: Telemetry, advertising ID, activity history, suggested apps and the services behind them.
+sidebar:
+  order: 4
+tags:
+  - privacy
+  - services
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Everything in this category is a Group Policy value under `HKLM\SOFTWARE\Policies\`.
+Policy values are what Windows itself uses, so they survive feature updates better
+than app-level toggles, and reverting means deleting the value.
+
+These are privacy and maintenance changes, not FPS or 1 % low optimizations.
+
+<span id="privacy.telemetry" class="tc-anchor" />
+
+## Diagnostic data level — privacy.telemetry
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection
+  AllowTelemetry                  = 0
+  DoNotShowFeedbackNotifications  = 1
+```
+
+:::note[Effect per edition]
+`AllowTelemetry = 0` means **Security** level, fully honoured only on Enterprise,
+Education and IoT editions. On Home and Pro, Windows clamps it to **Basic /
+Required** — the floor available without an Enterprise SKU, and lower than the
+default. Registry values cannot disable telemetry entirely on Pro. Pair this with
+`privacy.services-telemetry`, which disables the transport.
+:::
+
+Two details from the client that reads the value. `AllowTelemetry` also exists at a
+**non-policy** path,
+`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection`, DiagTrack's
+own local setting; the policy is evaluated against it rather than instead of it, and
+the SKU clamp is a separate maximum-allowed-level lookup. Level `2` (the old
+"Enhanced") no longer exists and is normalised to `1` at read time.
+
+Optional extras in the same policy key, all documented and all revert-by-delete:
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection
+  DisableOneSettingsDownloads   = 1   stops Windows pulling dynamic service config
+  AllowDeviceNameInTelemetry    = 0
+  DisableTelemetryOptInSettingsUx = 1
+  LimitDiagnosticLogCollection  = 1   only meaningful at levels 2/3
+  LimitDumpCollection           = 1   same
+```
+
+<span id="privacy.services-telemetry" class="tc-anchor" />
+
+## DiagTrack and dmwappushservice — privacy.services-telemetry
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+The policy values above set the *level*. These two services are the *transport*.
+
+| Service | Display name | What it does |
+| --- | --- | --- |
+| `DiagTrack` | Connected User Experiences and Telemetry | Collects and uploads diagnostic data |
+| `dmwappushservice` | WAP Push Message Routing Service | Routes WAP push messages and synchronises device-management sessions |
+
+`DiagTrack` as the transport is Microsoft's own documentation. `dmwappushservice`
+appears in every "telemetry services" list, but its documented role is WAP push
+routing and MDM session sync, and no primary source ties it to the diagnostic-data
+pipeline. It is included because disabling it on a machine with no MDM enrolment
+costs nothing, not because the telemetry link is established.
+
+The script stops both, sets them to Disabled, and captures the previous startup type
+for revert.
+
+**Cost:** Windows Feedback Hub stops working and some enterprise device management
+scenarios break.
+
+:::tip[Where this stops]
+Disabling `WSearch`, `SysMain`, `wuauserv` or `WaaSMedicSvc` is the common next step.
+Removing search and prefetch makes the machine measurably worse to use, and disabling
+Windows Update means no security patches. See
+[debunked: services and system](../../reference/debunked/services-and-system/).
+:::
+
+## The pipelines this page does not cover
+
+`AllowTelemetry` governs the diagnostic-data pipeline. It is not the only one, and
+the others have their own switches:
+
+| Pipeline | Where it lives |
+| --- | --- |
+| **Windows Error Reporting** | Its own service `WerSvc` (plus `wercplsupport`), the `QueueReporting` scheduled task, its own policy `HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting\Disabled`, and its own `watson.*` endpoints. Not governed by `AllowTelemetry` at all. |
+| **CEIP / SQM** | `HKLM\SOFTWARE\Policies\Microsoft\SQMClient\Windows\CEIPEnable = 0`, plus the Consolidator and UsbCeip scheduled tasks. |
+| **Application compatibility inventory** | `HKLM\SOFTWARE\Policies\Microsoft\Windows\AppCompat` — `AITEnable = 0`, `DisableInventory = 1` — plus the Microsoft Compatibility Appraiser tasks, `InventorySvc` and `PcaSvc`. |
+| **Inking and typing personalisation** | `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\TextInput\AllowLinguisticDataCollection = 0`. |
+| **Online speech recognition** | `HKLM\SOFTWARE\Policies\Microsoft\InputPersonalization\AllowInputPersonalization = 0`. |
+
+One layer remains past registry and services: blocking Microsoft's documented
+connection endpoints for non-Enterprise editions at the hosts or DNS level. The
+endpoint list changes, so this is a maintenance commitment rather than a tweak.
+

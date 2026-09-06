@@ -1,0 +1,670 @@
+/*
+  Design tokens and global typography.
+
+  Starlight's own variables are redefined here rather than fought with. The site
+  is dark only: there is no light token block, so the theme toggle is hidden in
+  the Starlight config and a stored "light" preference still renders dark.
+*/
+
+:root {
+  /* Brand ramp: violet into purple. The accent does the work orange does on the
+     site this palette is modelled on, so it appears in one place at a time: an
+     eyebrow, the current sidebar row, a link. */
+  --tc-violet: #a78bfa;
+  --tc-purple: #a855f7;
+  --tc-magenta: #c084fc;
+  --tc-gradient: linear-gradient(100deg, var(--tc-violet), var(--tc-purple) 55%, var(--tc-magenta));
+
+  /* Surfaces: near-black, neutral rather than tinted. The page, the nav and the
+     header all sit on the same colour and are separated by hairlines alone,
+     which is what stops the layout reading as three stacked boxes. */
+  --tc-surface: #16161a;
+  --tc-surface-2: #1c1c22;
+  --tc-border: #2a2a31;
+  --tc-border-soft: #212127;
+  --tc-code: #c9a9fb;
+  --tc-glow: 0 0 0 1px rgb(168 85 247 / 0.12), 0 18px 48px -30px rgb(168 85 247 / 0.28);
+
+  /* Semantic colours stay green/amber/red on purpose: risk has to read at a
+     glance, and a violet "low risk" badge would say nothing at all. */
+  --tc-ok: #4ade80;
+  --tc-warn: #fbbf24;
+  --tc-bad: #fb7185;
+
+  /* Starlight accent */
+  --sl-color-accent-low: #2a1b4d;
+  --sl-color-accent: #8b5cf6;
+  --sl-color-accent-high: #cbb2fd;
+
+  /* Neutral greys on a near-black page. Body copy sits at gray-2 rather than
+     white: full-contrast body text on near-black is what makes a dark page
+     glare, and the headings still stand clear above it. */
+  --sl-color-white: #ece9f0;
+  --sl-color-gray-1: #d6d3dc;
+  --sl-color-gray-2: #a9a6b2;
+  --sl-color-gray-3: #8a8794;
+  --sl-color-gray-4: #6a6774;
+  --sl-color-gray-5: #3a3842;
+  --sl-color-gray-6: #232228;
+  --sl-color-gray-7: #191920;
+  --sl-color-black: #0e0e11;
+
+  --sl-color-bg: #0e0e11;
+  --sl-color-bg-nav: color-mix(in srgb, #0e0e11 86%, transparent);
+  --sl-color-bg-sidebar: #0e0e11;
+  --sl-color-bg-inline-code: #1c1c22;
+  --sl-color-hairline: var(--tc-border-soft);
+  --sl-color-hairline-light: var(--tc-border);
+  --sl-color-hairline-shade: var(--tc-border-soft);
+
+  --sl-font: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sl-font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', 'Cascadia Code',
+    'Consolas', monospace;
+
+  /* Prose is capped at 72ch further down, so the extra width here goes to the
+     tables and code blocks, which are the widest things on a tweak page. */
+  --sl-content-width: var(--tc-main-width);
+  --sl-nav-height: 3.25rem;
+
+  /* The two columns, in one place so they are easy to retune: the nav on the
+     left, and the table of contents on the right, which only ever holds short
+     headings. The nav is sized to the longest label it carries
+     ("Win32PrioritySeparation, decoded"); drop below 18rem and that one wraps. */
+  --sl-sidebar-width: 18rem;
+  --tc-toc-width: 16rem;
+  --tc-main-width: 66rem;
+
+  /* Starlight's whole type scale, one step down, rather than a size per element:
+     the proportions stay Starlight's and everything shrinks together. These beat
+     Starlight's own desktop bump because custom CSS is unlayered. */
+  --sl-text-2xs: 0.75rem;
+  --sl-text-xs: 0.8125rem;
+  --sl-text-sm: 0.875rem;
+  --sl-text-base: 1rem;
+  --sl-text-lg: 1.0625rem;
+  --sl-text-xl: 1.1875rem;
+  --sl-text-2xl: 1.375rem;
+  --sl-text-3xl: 1.625rem;
+  --sl-text-4xl: 1.9375rem;
+  --sl-text-5xl: 2.25rem;
+  --sl-text-6xl: 3.25rem;
+  --sl-text-code: 0.8125rem;
+  --sl-text-code-sm: 0.8125rem;
+  --sl-line-height: 1.7;
+
+  /* The semantic sizes, set here rather than left to Starlight's step scale.
+     Reference material is scanned rather than read start to finish, so the body
+     runs at 14px and the headings stay close to it: the page holds more of a
+     table, and a heading marks a section without announcing it. Starlight's
+     desktop bump does not reach these — custom CSS is unlayered, so it wins
+     whatever the media query says. */
+  --sl-text-body: 0.875rem;
+  --sl-text-h1: 1.6875rem;
+  --sl-text-h2: 1.3125rem;
+  --sl-text-h3: 1.1875rem;
+  --sl-text-h4: 1rem;
+  --sl-text-h5: 1rem;
+  --sl-text-h6: 1rem;
+}
+
+/* ---------------------------------------------------------------- typography */
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv05' 1, 'ss03' 1;
+}
+
+/* Scrollbars: thin, and coloured off the page rather than the OS. Firefox takes
+   the two-value form; Chromium needs the pseudo-elements, so both are here. The
+   thumb only comes up to full strength on hover — a scrollbar is a control, not
+   a piece of the layout. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tc-border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--tc-border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--tc-purple) 55%, var(--tc-border));
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.sl-markdown-content {
+  font-size: var(--sl-text-body);
+  line-height: 1.7;
+}
+
+/* Tighter vertical rhythm than Starlight's default: this is reference material
+   that gets scanned, and a screen holding more of a table is worth more here than
+   the airier spacing a long-form article wants. */
+.sl-markdown-content :is(p, ul, ol, blockquote, table, pre) {
+  margin-top: 1rem;
+}
+
+.sl-markdown-content > :is(p, ul, ol, blockquote) {
+  max-width: 70ch;
+}
+
+.sl-markdown-content li + li {
+  margin-top: 0.3rem;
+}
+
+.sl-markdown-content > p:first-of-type {
+  font-size: var(--sl-text-body);
+  color: var(--sl-color-gray-2);
+}
+
+/* Every h2 opens a section, so it gets a hairline above it and room to breathe:
+   a long reference page reads as blocks rather than one wall. The rule is the
+   quiet kind — a coloured tab used to sit on it, which turned a page of fifteen
+   verdicts into fifteen competing marks. */
+/* Sections are separated by space, not by a line. The rule that used to sit
+   above every h2 was doing the job the margin already does, and on the debunked
+   pages it drew fifteen of them. */
+.sl-markdown-content .sl-heading-wrapper.level-h2 {
+  margin-top: 3rem;
+}
+
+.sl-markdown-content h2 {
+  font-size: var(--sl-text-h2);
+  letter-spacing: -0.02em;
+}
+
+.sl-markdown-content > .sl-heading-wrapper.level-h2:first-child {
+  margin-top: 1rem;
+}
+
+.sl-markdown-content h3 {
+  font-size: var(--sl-text-h3);
+  letter-spacing: -0.015em;
+  margin-top: 1.7rem;
+  scroll-margin-top: 4.25rem;
+}
+
+.sl-markdown-content h2 + *,
+.sl-markdown-content h3 + * {
+  margin-top: 0.6rem;
+}
+
+/* The title is the one thing on the page that never has to compete for
+   attention, so it is set plainly. The gradient lives on the home hero, where
+   there is nothing else to read; on a reference page it turned every heading
+   into decoration and made the body text look like the afterthought. */
+/* Starlight rules a line between the title panel and the body. With a lede
+   under every title the two blocks already read as separate, and the line was
+   the only horizontal rule left on the page. */
+.content-panel + .content-panel {
+  border-top: 0;
+  padding-top: 0.75rem;
+}
+
+.content-panel h1#_top {
+  letter-spacing: -0.03em;
+  color: var(--sl-color-white);
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+  text-underline-offset: 0.25em;
+  text-decoration-thickness: 1px;
+  transition: color 0.15s ease;
+}
+
+.sl-markdown-content a:not(:where(.not-content *)):focus-visible,
+.sidebar-content a:focus-visible,
+.sl-link-card:focus-visible,
+.card:focus-visible {
+  outline: 2px solid var(--tc-purple);
+  outline-offset: 3px;
+}
+
+.sl-markdown-content blockquote {
+  margin-inline: 0;
+  padding: 0.8rem 1.1rem;
+  border-inline-start: 3px solid var(--tc-purple);
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: color-mix(in srgb, var(--tc-surface-2) 72%, transparent);
+  color: var(--sl-color-gray-2);
+}
+
+/* ------------------------------------------------------------------ chrome */
+
+/* A hairline of brand colour under the sticky header, and a blur behind it. */
+header.header {
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--tc-border-soft);
+  box-shadow: 0 1px 0 0 rgb(168 85 247 / 0.09);
+}
+
+/* Search: Starlight's button is a 2.5rem pill sized for a wider header than this
+   one. Shrunk to the height of the bar it sits in, and squared off to match the
+   cards and code frames rather than the theme toggle. */
+site-search button[data-open-modal] {
+  height: 1.95rem;
+  border-radius: 0.4rem;
+  padding-inline: 0.6rem 0.4rem;
+  font-size: 0.8125rem;
+  background-color: color-mix(in srgb, var(--tc-surface) 70%, transparent);
+  border-color: var(--tc-border);
+}
+
+site-search button[data-open-modal]:hover {
+  border-color: color-mix(in srgb, var(--tc-purple) 45%, var(--tc-border));
+}
+
+site-search button[data-open-modal] > kbd {
+  font-size: 0.68rem;
+}
+
+site-search button[data-open-modal] kbd {
+  border-radius: 0.2rem;
+  padding-inline: 0.3rem;
+  background-color: color-mix(in srgb, var(--tc-surface-2) 80%, transparent);
+}
+
+/* The bar is 3.25rem now, so its contents have to give up some height too — the
+   logo is the piece that does not scale with the type tokens. */
+.site-title {
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.site-title img {
+  height: 1.5rem;
+}
+
+header.header .social-icons a {
+  padding: 0.35rem;
+}
+
+/* The site title reads as the name of the thing, not as an accented link. */
+.site-title {
+  color: var(--sl-color-white);
+  font-weight: 650;
+}
+
+/* Sidebar.
+
+   A flat column of plain rows, the way the docs sites that get this right do it:
+   the group heading is a small bold label, the pages under it are quiet grey
+   rows, and the only marked row is the one you are on. An earlier version drew a
+   gradient tick before every heading and a rail down each group; both were
+   decoration standing in for hierarchy that the spacing already carries.
+
+   Groups stay collapsible, which the model for this layout does not do, because
+   this nav is twelve groups deep rather than four. */
+/* Starlight draws the nesting rail on the list items themselves, so clearing it
+   on the lists alone leaves the line in place. */
+.sidebar-content ul ul {
+  margin-inline-start: 0;
+  padding-inline-start: 0;
+}
+
+.sidebar-content li {
+  border-inline-start: 0;
+  padding-inline-start: 0;
+  margin-inline-start: 0;
+}
+
+.sidebar-content a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  border-radius: 0.5rem;
+  padding: 0.24rem 0.7rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--sl-color-gray-3);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Numbered rows, the same device the autoexec docs use: pages inside a subject
+   are meant to be read in order, and a counter says so without a word of
+   explanation. CSS counters rather than markup, so the numbering follows the
+   nav config and cannot fall out of step with it. */
+.sidebar-content details > ul {
+  counter-reset: tc-nav;
+}
+
+.sidebar-content details > ul > li {
+  counter-increment: tc-nav;
+}
+
+.sidebar-content details > ul > li > a::before {
+  content: counter(tc-nav, decimal-leading-zero);
+  flex: none;
+  font-family: var(--sl-font-mono);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--sl-color-gray-5);
+  transition: color 0.15s ease;
+}
+
+.sidebar-content details > ul > li > a:hover::before {
+  color: var(--sl-color-gray-4);
+}
+
+.sidebar-content a:hover {
+  background-color: color-mix(in srgb, var(--sl-color-white) 6%, transparent);
+  color: var(--sl-color-white);
+}
+
+/* The current row is the one place in the nav the accent appears: a low tint of
+   it behind the row, the accent itself on the text. */
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover {
+  background-color: color-mix(in srgb, var(--tc-purple) 14%, transparent);
+  color: var(--sl-color-white);
+  font-weight: 600;
+}
+
+/* On the current row the number is the accent and the label is plain white:
+   the row is already marked, so colouring both would only shout. */
+.sidebar-content details > ul > li > a[aria-current='page']::before {
+  color: var(--tc-violet);
+}
+
+/* Subjects are separated by space alone. The accent headings already mark where
+   one ends and the next begins, and a rule between every pair drew fourteen
+   lines down a column that is mostly labels. The gap stays small on purpose:
+   all fourteen have to stand on one screen folded, or the nav cannot answer
+   "what is on this site" without scrolling. */
+.sidebar-content .top-level > li + li {
+  margin-top: 0.08rem;
+}
+
+/* Group headings: small, bold, plain. Sentence case rather than the uppercase
+   tracking they carried before, which at 0.68rem was harder to read than the
+   links underneath it. */
+/* Subject headings are set in the accent, small and uppercase, so the column
+   reads as a table of contents rather than as one long list of links. */
+.sidebar-content summary,
+.sidebar-content .large {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.14rem 0.7rem;
+  margin-bottom: 0.05rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  color: var(--sl-color-accent-high);
+}
+
+.sidebar-content .group-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Top-level entries that are a link rather than a group sit at heading weight,
+   so the two kinds of row do not look like different levels. */
+.sidebar-content .top-level > li > a.large {
+  padding-block: 0.24rem;
+  color: var(--sl-color-accent-high);
+}
+
+/* Count badges sit next to labels that wrap onto two lines. Without this the
+   badge wraps too and "40+" breaks across a line. */
+.sidebar-content .group-label .sl-badge {
+  flex: none;
+  white-space: nowrap;
+  font-size: 0.65rem;
+  line-height: 1.1;
+  padding: 0.1rem 0.35rem;
+}
+
+/* The disclosure caret is a control, not content: grey, small, and only as
+   visible as it needs to be to say the group opens. At Starlight's default size
+   it also sets the height of every group row, which is most of what a folded nav
+   of fourteen subjects costs. */
+.sidebar-content summary .caret {
+  /* Ahead of the label, where a disclosure triangle belongs: it reads as
+     "this opens" rather than as a decoration parked at the end of the row. */
+  order: -1;
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--sl-color-accent-high);
+  opacity: 0.75;
+}
+
+/* Three-column layout.
+
+   Starlight sizes the two side columns with flex percentages that hand each of
+   them a share of whatever space is left, so neither column has a width you can
+   state — which is why the table of contents kept coming out wide on a large
+   screen no matter what --sl-sidebar-width said. Replacing that row with a grid
+   gives both columns an actual number.
+
+   The same approach as noverse.dev, which is also a Starlight site. */
+@media (min-width: 72rem) {
+  html[data-has-sidebar][data-has-toc] .main-frame > .lg\:sl-flex {
+    display: grid;
+    grid-template-columns: minmax(0, var(--tc-main-width)) var(--tc-toc-width);
+    column-gap: 1.75rem;
+    justify-content: center;
+    width: 100%;
+  }
+
+  html[data-has-sidebar][data-has-toc] .main-pane {
+    --sl-content-margin-inline: auto;
+
+    grid-column: 1;
+    order: 1;
+    min-width: 0;
+    width: auto !important;
+  }
+
+  html[data-has-sidebar][data-has-toc] .right-sidebar-container {
+    grid-column: 2;
+    order: 2;
+    min-width: 0;
+    width: auto !important;
+  }
+
+  /* The panel itself is position: fixed, so without a width of its own it spans
+     the viewport and only its contents look narrow. */
+  html[data-has-sidebar][data-has-toc] .right-sidebar {
+    width: var(--tc-toc-width);
+
+    /* A long table of contents scrolls and a short one does not, so without a
+       reserved gutter the text width changes from page to page. */
+    scrollbar-gutter: stable;
+  }
+
+  html[data-has-sidebar][data-has-toc] .right-sidebar-panel {
+    padding-inline: 0.9rem;
+  }
+
+  html[data-has-sidebar][data-has-toc] .right-sidebar-panel .sl-container {
+    width: calc(var(--tc-toc-width) - 1.8rem);
+    max-width: none;
+  }
+}
+
+/* A rail down the desktop TOC, with the current heading marked on it: the list
+   then reads as a position in the page rather than one bolder link. The mobile
+   TOC is a dropdown with its own check-mark treatment, so it is left alone. */
+.right-sidebar-panel starlight-toc nav > ul {
+  border-inline-start: 1px solid var(--tc-border-soft);
+}
+
+.right-sidebar-panel starlight-toc a {
+  border-radius: 0;
+  box-shadow: inset 1px 0 0 0 transparent;
+  transition: color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.right-sidebar-panel starlight-toc a[aria-current='true'] {
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 0 var(--tc-purple);
+}
+
+/* ------------------------------------------------------------------ tables */
+
+/* The frame belongs to the wrapper (added by the rehype plugin), not to the
+   table: that way a table narrower than the column still fills its border
+   instead of leaving a hole beside it, and a wide one scrolls without the page
+   scrolling with it. */
+.sl-markdown-content .tc-table {
+  overflow-x: auto;
+  margin-top: 1rem;
+  border: 1px solid var(--tc-border);
+  border-radius: 0.7rem;
+  background: var(--tc-surface);
+}
+
+.sl-markdown-content table {
+  display: table;
+  width: 100%;
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 0;
+  font-size: var(--sl-text-body);
+  line-height: 1.5;
+}
+
+.sl-markdown-content thead {
+  background: var(--tc-surface-2);
+}
+
+.sl-markdown-content th {
+  font-size: 0.7rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sl-color-gray-3);
+  white-space: nowrap;
+  text-align: start;
+}
+
+.sl-markdown-content :is(th, td) {
+  border: 0;
+  border-bottom: 1px solid var(--tc-border-soft);
+  padding: 0.55rem 0.85rem;
+  vertical-align: top;
+}
+
+/* The last row's rule would double up with the wrapper's border. */
+.sl-markdown-content tr:last-child td {
+  border-bottom: 0;
+}
+
+/* First column carries the row's subject on almost every table here, so it
+   reads as the label rather than as one cell among four. */
+.sl-markdown-content tbody td:first-child {
+  color: var(--sl-color-gray-1);
+}
+
+.sl-markdown-content tbody tr:hover td {
+  background: color-mix(in srgb, var(--sl-color-white) 4%, transparent);
+}
+
+/* Registry paths and command names must not wrap mid-token inside a cell. */
+.sl-markdown-content td code {
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------- code and callouts */
+
+/* Inline code carries the accent: on a reference site most of it is a registry
+   value or a tweak ID, which is exactly what a reader is scanning for. */
+.sl-markdown-content :not(pre) > code {
+  border: 1px solid var(--tc-border-soft);
+  border-radius: 0.35em;
+  padding: 0.15em 0.4em;
+  font-size: 0.86em;
+  color: var(--tc-code);
+}
+
+.sl-markdown-content a code {
+  color: inherit;
+}
+
+.expressive-code .frame {
+  box-shadow: none;
+}
+
+/* Asides.
+
+   Starlight's own palette for these is a saturated primary blue, which is the
+   one strong colour on the site that belongs to nothing else: next to the
+   graphite panels it read as a foreign element pasted into the page. Each
+   variant is retuned to a colour the rest of the site already uses, at a tint
+   low enough that the callout sits on the page rather than on top of it. */
+.starlight-aside {
+  border-radius: 0.7rem;
+  border-inline-start-width: 3px;
+  padding: 0.8rem 1rem;
+  font-size: var(--sl-text-body);
+  background-color: color-mix(in srgb, var(--tc-aside) 10%, var(--sl-color-bg));
+  border-color: color-mix(in srgb, var(--tc-aside) 55%, transparent);
+  border-inline-start-color: var(--tc-aside);
+}
+
+.starlight-aside--note {
+  --tc-aside: var(--tc-violet);
+}
+
+.starlight-aside--tip {
+  --tc-aside: var(--tc-ok);
+}
+
+.starlight-aside--caution {
+  --tc-aside: var(--tc-warn);
+}
+
+.starlight-aside--danger {
+  --tc-aside: var(--tc-bad);
+}
+
+.starlight-aside__title {
+  color: color-mix(in srgb, var(--tc-aside) 72%, var(--sl-color-white));
+}
+
+.starlight-aside__icon {
+  color: var(--tc-aside);
+}
+
+.starlight-aside__title {
+  letter-spacing: -0.01em;
+}
+
+.starlight-aside p:last-child {
+  margin-bottom: 0;
+}
+
+/* ------------------------------------------------------------------ motion */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

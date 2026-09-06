@@ -1,0 +1,76 @@
+---
+/**
+ * Starlight's footer (pagination, edit link, last updated) plus a corrections
+ * row and a colophon crediting the tooling this site is built on.
+ *
+ * The corrections row is the docs-site version of the README's contributing
+ * note: every page here makes a claim that can be wrong, and the two links are
+ * the two ways to say so. It sits above the comment thread giscus renders.
+ */
+import Default from '@astrojs/starlight/components/Footer.astro';
+
+const repo = 'https://github.com/sLix1337x/Tweak-Collection';
+const { entry } = Astro.locals.starlightRoute;
+
+// Deep-links the issue form at the page it was opened from, so a correction
+// arrives with the page already named.
+const issueUrl = `${repo}/issues/new?title=${encodeURIComponent(`Correction: ${entry.data.title}`)}`;
+
+// The landing page makes no claims of its own to correct, and it already ends in
+// a set of cards pointing further in.
+const isSplash = entry.data.template === 'splash';
+---
+
+{!isSplash && (
+<div class="tc-corrections not-content">
+  <p class="tc-corrections-lead">Something here wrong?</p>
+  <p class="tc-corrections-body">
+    Every entry states a mechanism that can be checked. If one does not hold on your
+    hardware, or a value has changed in a newer build, <a href={issueUrl}>open an
+    issue</a> or say so <a href={`${repo}/discussions`}>in the discussions</a>. A
+    before/after capture beats an opinion, mine included.
+  </p>
+</div>
+)}
+
+<Default><slot /></Default>
+
+<p class="tc-colophon">
+  Built with <a href="https://starlight.astro.build" rel="noopener">Starlight</a>, the
+  documentation theme for <a href="https://astro.build" rel="noopener">Astro</a>. Genuinely
+  excellent, and worth a look if you are putting notes of your own online.
+</p>
+
+<style>
+  .tc-corrections {
+    margin-top: 3rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--tc-border);
+    border-radius: 0.8rem;
+    background: var(--tc-surface);
+  }
+
+  .tc-corrections-lead {
+    margin: 0 0 0.3rem;
+    font-size: var(--sl-text-sm);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--sl-color-white);
+  }
+
+  .tc-corrections-body {
+    margin: 0;
+    font-size: var(--sl-text-sm);
+    line-height: 1.55;
+    color: var(--sl-color-gray-3);
+  }
+
+  .tc-corrections a {
+    color: var(--sl-color-text-accent);
+    text-decoration: none;
+  }
+
+  .tc-corrections a:hover {
+    text-decoration: underline;
+  }
+</style>

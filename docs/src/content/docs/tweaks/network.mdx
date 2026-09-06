@@ -1,0 +1,182 @@
+---
+title: Network
+description: Delayed ACK, adapter power management, Energy Efficient Ethernet and interrupt moderation.
+sidebar:
+  order: 3
+tags:
+  - network
+  - latency
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Most circulating network advice comes from Windows XP-era guides and either no longer
+applies, no longer parses, or was never true.
+
+Rule: touch only properties the adapter's driver advertises, and never write a value
+blindly into every adapter's registry key.
+
+<span id="net.nagle" class="tc-anchor" />
+
+## Delayed ACK and Nagle's algorithm — net.nagle
+
+<TweakMeta risk="Medium" evidence="Documented / Situational" reboot={true} />
+
+Nagle's algorithm buffers small outgoing TCP segments to avoid flooding the network
+with tiny packets. Delayed ACK holds acknowledgements for up to 200 ms hoping to
+piggyback them on outgoing data. Together they add latency to exactly the traffic
+pattern games produce: small packets, sent constantly, never filling a buffer.
+
+```text
+HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{GUID}
+  TcpAckFrequency = 1   (acknowledge every segment immediately)
+  TCPNoDelay      = 1   (disable Nagle)
+```
+
+The script writes these only to adapters that are currently **Up**, and captures
+whatever was there first.
+
+:::caution[The commonly published value is wrong]
+Most guides write `TcpAckFrequency = 0`. Microsoft documents `0` as not valid and
+treated as the default of `2`, producing default behaviour that looks like a change.
+The value is a count of outstanding ACKs before the delayed-ACK timer is ignored; `1`
+acknowledges every segment.
+:::
+
+**No effect on:** UDP games, which is most competitive shooters including CS2,
+Valorant and Overwatch. TCP settings do not touch UDP traffic. The tweak applies to
+TCP-based games and TCP application traffic.
+
+**Cost:** slightly more packets on the wire.
+
+<span id="net.adapter-powersave-off" class="tc-anchor" />
+
+## Adapter power management — net.adapter-powersave-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+Clears **Allow the computer to turn off this device to save power** on every
+physical NIC. When Windows powers a NIC down and back up, the link renegotiates:
+a one to three second network stall in the middle of whatever was running.
+
+```powershell
+Disable-NetAdapterPowerManagement -Name '*'
+```
+
+The script bounces the adapter afterwards so the change applies without a reboot, and
+skips the bounce if it detects an RDP session.
+
+**The checkbox is one switch out of many.** Drivers expose a wider power surface
+through standardised and vendor-specific NDIS keywords; the vendor-specific ones are
+the usual cause of a link dropping mid-session:
+
+| Keyword | What it does |
+| --- | --- |
+| `*SelectiveSuspend` | NDIS selective suspend, default on. `*SSIdleTimeout` (≈5 s) and `*SSIdleTimeoutScreenOff` (≈3 s) set when it fires. |
+| `*DeviceSleepOnDisconnect` | Powers the NIC down when the cable is out. |
+| `EnableGreenEthernet`, `PowerSavingMode`, `ULPMode`, `ReduceSpeedOnPowerDown` | Vendor power features. Green Ethernet in particular renegotiates the link. |
+| `*PMARPOffload`, `*PMNSOffload`, `*PMWiFiRekeyOffload` | Protocol offloads that answer ARP/NS and re-key while the machine sleeps. Only relevant on a machine that sleeps. |
+
+The last row is *power-management* offloads, not the task offloads (checksum, LSO,
+RSC) meant elsewhere on the Advanced tab. Disabling the PM ones costs a sleeping
+machine its ability to answer the network; disabling the task ones costs CPU for
+nothing.
+
+<span id="net.eee-off" class="tc-anchor" />
+
+## Energy Efficient Ethernet and flow control — net.eee-off
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+**EEE (802.3az)** idles the PHY between frames and takes time to wake it. The
+standard's wake budget is around 16.5 µs for 1000BASE-T — measurable, and far below
+anything perceptible in a game.
+
+**Flow control (802.3x)** lets the switch send PAUSE frames that temporarily stop the
+NIC transmitting. Disabling it is a judgement call rather than a documented fix: no
+Microsoft or Intel guidance recommends it on a desktop, and it exists to prevent loss
+on a saturating link.
+[Full argument](../../guides/network-adapter-settings/#flow-control).
+
+Two constraints: pause frames require **link partner** support, so on a switch that
+ignores them the setting is moot; and on Windows Server, enabling priority-based (QoS)
+flow control disables the link-level kind.
+
+```powershell
+Set-NetAdapterAdvancedProperty -Name '*' -RegistryKeyword '*EEE' -RegistryValue 0
+Set-NetAdapterAdvancedProperty -Name '*' -RegistryKeyword '*FlowControl' -RegistryValue 0
+```
+
+Not every driver exposes these. The script queries each adapter for the keyword and
+skips adapters that do not advertise it. Intel drivers name the EEE switch
+`AdvancedEEE`, which the script also tries.
+
+The WDK standardised default for `*EEE` is enabled, but captured Intel INF files show
+both `*EEE` and `AdvancedEEE` shipping with a default of `0` on some drivers, so
+"disable EEE" is a no-op on a meaningful share of adapters. A value written into a key
+that does not advertise the keyword is rejected.
+
+:::caution[The circulating value is inverted]
+The `optimize_network.bat` scripts write `*EEE = 1` and `*FlowControl = 1` under a
+comment claiming to deactivate them. `1` enables them.
+:::
+
+<span id="net.interrupt-moderation-off" class="tc-anchor" />
+
+## Interrupt moderation — net.interrupt-moderation-off
+
+<TweakMeta risk="Medium" evidence="Documented / Situational" reboot={false} />
+
+Interrupt moderation batches received packets and raises one interrupt per batch
+instead of one per packet. Disabled, every packet interrupts the CPU immediately:
+lower latency, higher CPU load, higher interrupt rate. A trade, not a free win.
+
+**Disable when:** there is CPU headroom, input-to-photon latency is the target, and
+traffic is small packets.
+
+**Keep when:** core count is low, a 2.5G or 10G link runs saturated, or CPU usage
+climbs after applying it.
+
+Measure before and after with `Get-NetAdapterStatistics` and LatencyMon; with no
+visible difference, keep the default.
+
+:::note[The default is already adaptive]
+Current Intel drivers do not ship a fixed moderation interval. The Interrupt Throttle
+Rate keyword `ITR` ships as **Adaptive** (`65535`), with fixed rungs below it — Off
+`0`, then roughly Minimal 200, Low 400, Medium 950, High 2000, Extreme 3600 on one
+driver generation, and 32/64/125/250/500 on another. Adaptive already lowers the
+interrupt interval when traffic is sparse, so forcing moderation off gains only in
+small-packet latency on a CPU with headroom. Mellanox and other server-class drivers
+expose per-direction coalescing instead (`RecvIntModCount`/`Time`,
+`SendIntModCount`/`Time`).
+:::
+
+Since **NDIS 6.85**, Windows supports *poll mode* (`*NdisPoll`, default-enabled on
+drivers that support it): NDIS schedules datapath work with per-iteration work limits
+rather than the driver chaining DPCs itself, giving the OS back-pressure and finer
+control over when interrupts fire. On a machine using it, disabling interrupt
+moderation is a smaller change than the classic interrupt-then-DPC model suggests.
+
+## The rest of the Advanced tab
+
+RSS, the checksum and segmentation offloads, jumbo frames, buffers, Priority & VLAN
+and the wake properties are also on that tab. The usual advice is to turn them off,
+which is wrong for most of them.
+
+[Network adapter settings](../../guides/network-adapter-settings/) covers every
+property, its default, and which are worth touching.
+
+Two where the blanket advice is inverted:
+
+- **Buffers.** The valid range comes from the driver's INF as a min/max/step triple
+  and differs per adapter — observed defaults span 256 to 2048 on Intel parts alone.
+  Out-of-range writes are *rejected*, not clamped, so a script setting a fixed number
+  silently does nothing on many machines.
+- **Jumbo frames.** Every device on the path must agree on the frame size, which on a
+  home network means it will not work. Intel warns against dropping RX/TX buffers
+  below 256 with jumbo enabled — that combination loses the link.
+
+Values that are wrong rather than merely unnecessary (`*RSS = 0`, buffers set to `0`,
+a forced MTU of 1458, `netsh int tcp set global chimney=disabled`) are on
+[debunked: network](../../reference/debunked/network/).

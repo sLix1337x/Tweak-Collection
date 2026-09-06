@@ -1,0 +1,10 @@
+---
+import Default from '@astrojs/starlight/components/Head.astro';
+---
+
+<Default><slot /></Default>
+
+{/* The site is dark only, so the browser chrome and the form controls are told
+    so once, without a light variant to switch to. */}
+<meta name="theme-color" content="#0e0e11" />
+<meta name="color-scheme" content="dark" />

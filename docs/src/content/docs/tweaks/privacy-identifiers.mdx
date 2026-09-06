@@ -1,0 +1,105 @@
+---
+title: Identifiers & apps
+description: The advertising ID, activity history and the apps Windows installs on its own.
+sidebar:
+  order: 5
+tags:
+  - privacy
+  - registry
+---
+
+import TweakMeta from '../../../components/TweakMeta.astro';
+
+Three settings that are not telemetry in the diagnostic sense: an identifier apps can
+read, a history Windows uploads, and apps it installs unprompted. All three are Group
+Policy values and revert by deleting what was written.
+
+<span id="privacy.advertising-id" class="tc-anchor" />
+
+## Per-user advertising ID — privacy.advertising-id
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo
+  DisabledByGroupPolicy = 1
+```
+
+Windows generates a stable per-user identifier that apps can read to correlate activity
+across the system. The policy makes it unavailable to apps. No functional downside.
+
+ID reset on disable is documented for the Settings toggle, not the policy path; the
+policy makes the ID unusable rather than rotating it.
+
+<span id="privacy.activity-history" class="tc-anchor" />
+
+## Activity history — privacy.activity-history
+
+<TweakMeta risk="Low" evidence="Documented" reboot={true} />
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\System
+  PublishUserActivities = 0
+  UploadUserActivities  = 0
+  EnableActivityFeed    = 0
+```
+
+`PublishUserActivities` stops local collection; `UploadUserActivities` stops the send
+to the Microsoft account; `EnableActivityFeed` is the master switch over both. Setting
+only the upload value stops the sync but leaves the local database growing.
+
+**Cost:** the cross-device half is already gone — Microsoft discontinued synced
+activity history in Windows versions released from January 2024 onward, after ending
+consumer-account upload years earlier. No Timeline UX remains on a current build.
+
+The remaining effect is local: `PublishUserActivities = 0` stops the on-device activity
+store that feeds Start's "Recommended" section and Task View's recent items.
+
+<span id="privacy.consumer-features" class="tc-anchor" />
+
+## Silently installed apps — privacy.consumer-features
+
+<TweakMeta risk="Low" evidence="Documented" reboot={false} />
+
+```text
+HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent
+  DisableWindowsConsumerFeatures = 1
+  DisableSoftLanding             = 1
+```
+
+`DisableWindowsConsumerFeatures` stops Windows pulling promoted apps and games onto the
+machine. `DisableSoftLanding` is Microsoft's **"Do not show Windows tips"** policy,
+marked deprecated; it does not control Start menu app suggestions.
+
+Apply on a fresh install before the first sign-in to a Microsoft account, when most of
+the silent installing happens.
+
+:::caution[These two are Enterprise/Education policies]
+Microsoft's Policy CSP edition matrix does not list `AllowWindowsConsumerFeatures` or
+`DisableSoftLanding` as applicable to Pro or Home. They are frequently reported as
+working there anyway, but the supported layer on a consumer edition is per-user under
+`HKCU`, reaching the same content channels individually:
+
+```text
+HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+  SubscribedContent-338381Enabled = 0   Start suggestions
+  SubscribedContent-338388Enabled = 0   Start suggestions
+  SubscribedContent-202913Enabled = 0   silently installed apps
+  SubscribedContent-202914Enabled = 0   silently installed apps
+  SubscribedContent-338389Enabled = 0   Windows tips (the only one present by default)
+  SubscribedContent-338393Enabled = 0   Settings "recommendations & offers"
+  SubscribedContent-353694Enabled = 0   same
+  SubscribedContent-353696Enabled = 0   same
+  SubscribedContent-314566Enabled = 0   OOBE offers
+  SubscribedContent-314567Enabled = 0   OOBE offers
+  SubscribedContent-310093Enabled = 0   first-run "minute zero" offers
+  SubscribedContent-310094Enabled = 0   same
+```
+
+Only `338389` exists on a stock install; the rest are created on write and read by the
+content-delivery component regardless. The dedicated OOBE and minute-zero channels are
+why these are applied before first sign-in.
+:::
+
+**Cost:** none of substance.
+

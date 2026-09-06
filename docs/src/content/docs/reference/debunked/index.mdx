@@ -1,0 +1,85 @@
+---
+title: Debunked & rejected
+description: Popular Windows tweaks that do nothing, no longer exist, or make something worse, grouped by subsystem, with the reason for each verdict.
+sidebar:
+  order: 0
+  label: Overview
+tags:
+  - debunked
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Forty-odd widely circulated tweaks that do not survive checking. Each entry names what
+the tweak claims to do, what it does instead, and where that can be verified. They are
+grouped by the subsystem they claim to touch.
+
+<CardGrid>
+  <LinkCard
+    title="Scheduler, timers and CPU power"
+    href="scheduler/"
+    description="Quantum tweaks, HPET, dynamic tick, the MMCSS values nothing reads, input queue sizes."
+  />
+  <LinkCard
+    title="Network"
+    href="network/"
+    description="netsh commands removed from Windows, adapter keywords written blind, values outside their own valid range."
+  />
+  <LinkCard
+    title="NVIDIA"
+    href="nvidia/"
+    description="The RM* registry values that fill GPU tweak scripts, and what each one actually does."
+  />
+  <LinkCard
+    title="Storage and memory"
+    href="storage-and-memory/"
+    description="Queue depths, pool limits, the prefetcher, memory compression."
+  />
+  <LinkCard
+    title="Services and system"
+    href="services-and-system/"
+    description="Service-disabling lists, registry cleaners, one-click debloaters, the page file."
+  />
+</CardGrid>
+
+:::note[Game-specific folklore has its own page]
+Everything here fails on Windows' own terms. Tweaks that fail *because of a
+particular game* — dead console commands, values that cannot reach UDP traffic,
+advice that is inverted for one engine — are on
+[CS2: what does not work](../../cs2/myths/).
+:::
+
+## What the verdicts mean
+
+| Verdict | Meaning |
+| --- | --- |
+| <span class="tc-verdict tc-verdict-invalid">Invalid</span> | Writes a value the system does not accept, or calls something that no longer exists. Does nothing, silently. |
+| <span class="tc-verdict tc-verdict-placebo">Placebo</span> | A real setting with no measurable effect. |
+| <span class="tc-verdict tc-verdict-harmful">Harmful</span> | Measurably makes something worse. |
+| <span class="tc-verdict tc-verdict-situational">Situational</span> | Can help on specific hardware, but not as a blanket recommendation. |
+| <span class="tc-verdict tc-verdict-situational">Unproven</span> | Real, read by the system, and it does change behaviour. What is missing is evidence that any particular value is an improvement. |
+| <span class="tc-verdict tc-verdict-invalid">Superseded</span> | Not wrong, but a documented setting does the same job and reverts cleanly. |
+
+## Why the list is this long
+
+Almost every entry is one of three cases.
+
+**Correct advice for an older Windows.** The setting was real on Windows 7 or 10 and
+was never re-checked against a current build. TCP Chimney Offload and `IoPageLockLimit`
+are the clearest: both genuine, both gone.
+
+**A real setting with an unproven benefit.** The value exists, the system reads it, and
+it changes behaviour, but no measurement shows the change is an improvement.
+`Win32PrioritySeparation` is the canonical example. Marked **Unproven** rather than
+Placebo, because "nothing measurable has been shown" and "nothing happens" are
+different claims.
+
+**A value copied wrong, then copied from the copy.** `TcpAckFrequency = 0` is outside
+the key's valid range. `*EEE = 1` enables the feature the comment above it claims to
+disable.
+
+All three survive because Windows does not complain: `Set-ItemProperty` writes any name
+it is given, the value appears in `regedit`, and nothing reads it. Checking a value
+against [the binary that would read it](../../guides/reading-the-binary/) rules out an
+entire category. For the other two: know the mechanism, check the Windows version,
+measure the result — see [how a tweak earns its place](../../start/method/).

@@ -1,0 +1,111 @@
+---
+/**
+ * Starlight's page title with a breadcrumb above it.
+ *
+ * The sidebar already says where a page sits, but it scrolls independently and
+ * is hidden entirely on a phone, so on a deep page like
+ * `reference/debunked/scheduler` there is nothing on screen saying which section
+ * you are in. The trail is read out of the sidebar tree Starlight already built
+ * for this route, so it cannot disagree with the nav.
+ */
+/* Starlight's own PAGE_TITLE_ID. Its `constants` module is not in the package's
+   exports map, so the value is inlined; the "skip to content" link and the URL
+   fragment the logo points at both rely on it. */
+const PAGE_TITLE_ID = '_top';
+
+type NavEntry = {
+  type: 'link' | 'group';
+  label: string;
+  isCurrent?: boolean;
+  entries?: NavEntry[];
+};
+
+/** Labels of the groups enclosing the current page, outermost first. */
+function trailTo(entries: NavEntry[], trail: string[] = []): string[] | null {
+  for (const entry of entries) {
+    if (entry.type === 'link' && entry.isCurrent) return trail;
+    if (entry.type === 'group' && entry.entries) {
+      const found = trailTo(entry.entries, [...trail, entry.label]);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+const route = Astro.locals.starlightRoute;
+const trail = trailTo(route.sidebar as NavEntry[]) ?? [];
+---
+
+{
+  trail.length > 0 && (
+    <nav class="tc-crumbs" aria-label="Breadcrumb">
+      {trail.map((label) => (
+        <span>{label}</span>
+      ))}
+    </nav>
+  )
+}
+
+<h1 id={PAGE_TITLE_ID}>{route.entry.data.title}</h1>
+
+{
+  route.entry.data.description && (
+    <p class="tc-lede">{route.entry.data.description}</p>
+  )
+}
+
+<style>
+  /* The trail is set in the accent, which is the only place on a content page
+     the brand colour appears now that the title is plain. */
+  .tc-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    font-size: var(--sl-text-xs);
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--sl-color-text-accent);
+  }
+
+  /* A slash between levels, drawn rather than typed so it cannot be selected
+     into a copied heading. */
+  .tc-crumbs span + span::before {
+    content: '';
+    display: inline-block;
+    width: 1px;
+    height: 0.7em;
+    margin-inline-end: 0.4rem;
+    transform: rotate(18deg);
+    background: currentcolor;
+    opacity: 0.45;
+    vertical-align: -0.05em;
+  }
+
+  h1 {
+    margin-top: 1rem;
+    font-size: var(--sl-text-h1);
+    line-height: var(--sl-line-height-headings);
+    font-weight: 600;
+    color: var(--sl-color-white);
+  }
+
+  .tc-crumbs + h1 {
+    margin-top: 0.15rem;
+  }
+
+  /* Every page already carries a one-line description in its frontmatter, used
+     for search results and social cards. Printing it under the title costs
+     nothing and answers "am I on the right page" before the reader has to parse
+     a paragraph. */
+  .tc-lede {
+    margin: 0.55rem 0 0;
+    max-width: 46rem;
+    font-size: var(--sl-text-h4);
+    line-height: 1.5;
+    color: var(--sl-color-gray-3);
+    text-wrap: pretty;
+  }
+</style>
