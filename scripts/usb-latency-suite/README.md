@@ -15,10 +15,10 @@ Both require administrator rights and a reboot to take effect.
 
 Windows saves power on USB by letting devices go idle and by suspending individual ports. The relevant mechanisms:
 
-- **Selective Suspend**: the USB hub driver puts an individual port into a low-power state after an idle timeout. Waking it costs milliseconds and can drop or delay input reports.
+- **Selective Suspend**: the USB hub driver puts an individual port into a low-power state after an idle timeout. On a device that supports it, the first report after that waits for the port to resume. Windows leaves it off for HID devices unless the device opts in.
 - **Device idle / D-states (D1/D2/D3, D3cold)**: a device drops into a lower power state; the `fid_D*Latency` values describe how long it takes to come back.
-- **Enhanced Power Management (EPM)**: link-level power management on USB 3.x (U1/U2 link states, `LPMEnabled`).
-- **Wake capability**: the device is allowed to wake the machine from sleep; keeping this armed keeps extra power-management logic in the path.
+- **Enhanced Power Management (EPM)**: a per-device value (`EnhancedPowerManagementEnabled`). Setting it to 0 is Microsoft's own workaround for USB devices that drop off or stop charging. It is not the USB 3 U1/U2 link-state switch.
+- **Wake capability**: the device is allowed to wake the machine from sleep. It only matters for waking from sleep, not while the PC is running.
 - **WDF idle policy** (`IdleInWorkingState`, `IdleEnabled`): the Kernel-Mode Driver Framework's own idle timer, separate from the USB stack's.
 
 Every value both scripts write is a variation on "turn one of the above off".
@@ -44,7 +44,7 @@ A plain registry import covering 14 groups of keys. It touches driver *service* 
 | 13 | `Services\WinUsb\Parameters` | Generic user-mode USB driver |
 | 14 | `Control\USB\AutomaticSurpriseRemovals` | Disables recovery-from-power-drain behavior |
 
-`InterruptThreshold=1` is the one value here that is a genuine latency knob rather than a power-saving switch: it tells the xHCI/hub driver to fire an interrupt per transfer instead of coalescing them.
+`InterruptThreshold=1` was presented as the one genuine latency knob: an interrupt per transfer instead of coalescing. Nothing reads it. Windows' xHCI driver writes a fixed interrupt moderation interval of 50 µs (`IMODI = 200`) to every interrupter and takes no registry value for it, so the rewrite drops it.
 
 ---
 
@@ -77,7 +77,7 @@ The programmatic equivalent of unticking *"Allow the computer to turn off this d
 
 ## 4. Effects and trade-offs
 
-**Expected upside:** no port ever suspends, so there is no wake-from-suspend penalty on the first input after an idle moment; interrupt coalescing on the xHCI path is reduced; devices are never renegotiated after a power transition.
+**Expected upside:** no port ever suspends, so there is no wake-from-suspend penalty on the first input after an idle timeout; devices are never renegotiated after a power transition.
 
 **Cost:**
 - Higher idle power draw: meaningful on a laptop, irrelevant on a desktop.
@@ -116,7 +116,7 @@ A single PowerShell script with a WPF UI that replaces both files and fixes ever
 powershell -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File .\USB-LatencySuite.ps1
 ```
 
-**Five modules**, each an independent toggle: Selective Suspend, Device Idle / D-States, Link Power Management, Wake Capability, Interrupt Threshold.
+**Four modules**, each an independent toggle: Selective Suspend, Device Idle / D-States, Enhanced Power Management, Wake Capability. Each writes only per-device values a driver reads (`SelectiveSuspendEnabled`, `AllowIdleIrpInD3`, `DeviceIdleEnabled`, `WDF\IdleInWorkingState`, `EnhancedPowerManagementEnabled`, `SystemWakeEnabled`). Earlier versions also wrote driver-service values, `InterruptThreshold` and three device values with no reader at that location; those are gone, and backups made by those versions still revert.
 
 **Device list** built from one `Get-PnpDevice -PresentOnly` call: every `USB\*` and `HID\*` device plus the PCI USB host controllers. Each device has a checkbox, so a single mouse can be tuned without touching the webcam.
 
@@ -160,7 +160,6 @@ Nothing else is required: no installer, no modules, no .NET download. The script
 
 - Runs from anywhere: USB stick, Downloads, a network share.
 - Backups go next to the script; if that location is read-only the script falls back to `%LOCALAPPDATA%\USBLatencySuite\Backups`. The output pane is also mirrored to `session.log` there.
-- Service-level values are only written for drivers the machine actually has. `usbehci` and `usbuhci` no longer exist on modern hardware, and the script no longer creates empty service keys for them.
 - Window size is clamped to the desktop work area, so it fits small and high-DPI laptop screens.
 - A battery is detected and called out in the output pane: these tweaks keep USB devices powered and cost idle runtime on a laptop.
 - **Reboot** button in the footer.

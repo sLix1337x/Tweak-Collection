@@ -11,7 +11,8 @@ tags:
 
 import TweakMeta from '../../../components/TweakMeta.astro';
 
-Everything in this category is a Group Policy value under `HKLM\SOFTWARE\Policies\`.
+Everything in this category except the two telemetry services is a Group Policy
+value under `HKLM\SOFTWARE\Policies\`.
 Policy values are what Windows itself uses, so they survive feature updates better
 than app-level toggles, and reverting means deleting the value.
 
@@ -51,7 +52,7 @@ HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection
   DisableOneSettingsDownloads   = 1   stops Windows pulling dynamic service config
   AllowDeviceNameInTelemetry    = 0
   DisableTelemetryOptInSettingsUx = 1
-  LimitDiagnosticLogCollection  = 1   only meaningful at levels 2/3
+  LimitDiagnosticLogCollection  = 1   only meaningful at level 3 (Optional)
   LimitDumpCollection           = 1   same
 ```
 
@@ -66,7 +67,7 @@ The policy values above set the *level*. These two services are the *transport*.
 | Service | Display name | What it does |
 | --- | --- | --- |
 | `DiagTrack` | Connected User Experiences and Telemetry | Collects and uploads diagnostic data |
-| `dmwappushservice` | WAP Push Message Routing Service | Routes WAP push messages and synchronises device-management sessions |
+| `dmwappushservice` | Device Management Wireless Application Protocol (WAP) Push message Routing Service | Routes WAP push messages and synchronises device-management sessions |
 
 `DiagTrack` as the transport is Microsoft's own documentation. `dmwappushservice`
 appears in every "telemetry services" list, but its documented role is WAP push
@@ -94,7 +95,7 @@ the others have their own switches:
 
 | Pipeline | Where it lives |
 | --- | --- |
-| **Windows Error Reporting** | Its own service `WerSvc` (plus `wercplsupport`), the `QueueReporting` scheduled task, its own policy `HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting\Disabled`, and its own `watson.*` endpoints. Not governed by `AllowTelemetry` at all. |
+| **Windows Error Reporting** | Its own service `WerSvc` (plus `wercplsupport`), the `QueueReporting` scheduled task, its own policy `HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting\Disabled`, and its own `watson.*` endpoints. `AllowTelemetry` does not switch it off; the diagnostic level only shapes which dumps it may send. |
 | **CEIP / SQM** | `HKLM\SOFTWARE\Policies\Microsoft\SQMClient\Windows\CEIPEnable = 0`, plus the Consolidator and UsbCeip scheduled tasks. |
 | **Application compatibility inventory** | `HKLM\SOFTWARE\Policies\Microsoft\Windows\AppCompat` — `AITEnable = 0`, `DisableInventory = 1` — plus the Microsoft Compatibility Appraiser tasks, `InventorySvc` and `PcaSvc`. |
 | **Inking and typing personalisation** | `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\TextInput\AllowLinguisticDataCollection = 0`. |

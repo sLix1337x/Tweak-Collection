@@ -34,7 +34,7 @@ It was rebuilt from scratch, with the reasoning written down for every entry.
 | :-- | :-- |
 | ⚙️ | **Mechanism first.** Every tweak says what it changes and what it costs. |
 | ↩️ | **Nothing is one-way.** State is captured before it is touched, and put back exactly. |
-| 🔬 | **Checked, not copied.** Claims are verified against the binary that reads them. |
+| 🔬 | **Checked, not copied.** Where possible, claims are verified against the binary that reads them. |
 | 🗑️ | **The rejects are documented too.** Forty-plus of them, grouped by subsystem. |
 
 <br>
@@ -57,7 +57,7 @@ network, and some of them are trades rather than upgrades. What helps on one mac
 does nothing on another.
 
 Apply one category at a time, reboot in between, and
-[measure](https://slix1337x.github.io/Tweak-Collection/guides/measuring-before-you-tweak/),
+[measure](https://slix1337x.github.io/Tweak-Collection/guides/benchmark/dpc-latency/),
 otherwise there is no telling a real improvement from a placebo. The script tries to
 create a restore point first, but what you run on your machine is your
 responsibility.

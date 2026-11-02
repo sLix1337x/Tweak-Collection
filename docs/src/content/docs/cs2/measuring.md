@@ -40,9 +40,9 @@ failure, not measurement.
 
 ## Traps specific to this measurement
 
-**Do not run two PresentMon consumers at once.** Afterburner's capture, HWiNFO's
-frame-time monitoring and CapFrameX all hook the same source; together they corrupt
-results. They are also a DPC source in their own right.
+**Do not run two PresentMon consumers at once.** Afterburner's capture or HWiNFO's
+frame-time monitoring running alongside CapFrameX can corrupt results. They are also a
+DPC source in their own right.
 
 **Hold the limiter constant.** `fps_max` and driver-level limiters produce materially
 different lows at the same cap. Pick one for the whole comparison.

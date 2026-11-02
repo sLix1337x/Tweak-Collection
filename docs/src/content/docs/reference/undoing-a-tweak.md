@@ -35,10 +35,11 @@ Values that overwrite a default Windows already set need the original value rest
 | MMCSS `Games\SFIO Priority` | `Normal` |
 | `TcpAckFrequency` (per interface) | value absent |
 | `TCPNoDelay` (per interface) | value absent |
-| `MSISupported` | value absent |
+| `MSISupported` | device-specific: set to `1` by many INFs |
 
 "Value absent" means Windows never wrote one, so deleting it is the correct undo, not
-setting it to zero.
+setting it to zero. `MSISupported` is the exception: where the device's INF set it,
+deleting it puts the device back on line-based interrupts. Restore the backed-up value.
 
 The MMCSS `Games` rows are listed because a stock Windows install ships them and tweak
 guides overwrite them. Nothing reads two of them (see
@@ -77,9 +78,13 @@ and resets the built-in ones to their defaults.
 ### NVIDIA scheduled tasks
 
 ```powershell
-Get-ScheduledTask | Where-Object TaskName -match 'NvTm|NvDriverUpdate|GeForce' |
+Get-ScheduledTask |
+  Where-Object TaskName -match 'NvTm|NvDriverUpdate|GeForce|NvProfileUpdater|NvNodeLauncher' |
   Enable-ScheduledTask
 ```
+
+This enables every matching task, including any that were already disabled before
+the tweak ran; `-Revert` restores each task's own previous state.
 
 ### Network adapters
 
@@ -101,7 +106,8 @@ been written down first.
 ## From a system restore point
 
 ```powershell
-Get-ComputerRestorePoint
+# Windows PowerShell 5.1 only; the cmdlet does not exist in PowerShell 7
+powershell -NoProfile -Command Get-ComputerRestorePoint
 ```
 
 Then restore through **System Properties → System Protection → System Restore**.

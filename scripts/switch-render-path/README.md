@@ -10,7 +10,6 @@ not by what any PC looked like.
 Switch-RenderPath.ps1    the tool (one file, no dependencies)
 test-flag.ps1            self-check for the per-exe flag writer
 LICENSE                  MIT
-docs/                    full design + audit record (source tree only)
 _backups/                created on first write; one folder per change
 ```
 
@@ -24,7 +23,7 @@ is deliberately frozen so restore points taken by an older copy stay visible to 
 
 | Axis | Registry | States | What actually changes |
 |---|---|---|---|
-| **Mpo** | `HKLM\...\Windows\Dwm\OverlayTestMode` + `OverlayMinFPS` | `On` (both absent) / `Off` (5 and 0) | Whether the display engine may compose several planes in hardware. Off = one plane, so an overlay drawn over a game has to go through DWM instead. On 24H2 and later DWM reads both values, so `OverlayTestMode` alone often does nothing |
+| **Mpo** | `HKLM\...\Windows\Dwm\OverlayTestMode` | `On` (absent) / `Off` (5) | Whether the display engine may compose several planes in hardware. Off = one plane, so an overlay drawn over a game has to go through DWM instead. Both states also delete `OverlayMinFPS`: an earlier version wrote it as `0`, which Microsoft documents as making overlay assignment *more* likely |
 | **Dwm** | 42 values in the same key | `Stock` (absent) / `Stripped` | Shadows, caching, effects, present-queue depth, advanced direct flip. Desktop composition, **not** the game's own frame path |
 | **Fso** | `GameConfigStore\GameDVR_DXGIHonorFSEWindowsCompatible` | `On` / `Off` | On, "fullscreen" is quietly turned into flip-model borderless. Off, a game asking for exclusive fullscreen gets it |
 | **WindowedOpt** | `DirectXUserGlobalSettings\SwapEffectUpgradeEnable` | `On` (absent or 1) / `Off` (0) | Whether windowed and borderless games are upgraded to the flip model |
@@ -89,7 +88,7 @@ every preset.
 All three values are written together on purpose. `GameDVR_Enabled` alone does not hold: it
 is the `GameConfigStore` mirror of `AppCaptureEnabled`, and the Windows gaming stack
 reconciles the pair at logon. Writing one side and not the other is how a verified write came
-back changed after a reboot (`docs/DESIGN-AND-AUDIT.md` §15).
+back changed after a reboot.
 
 ## Presets
 
@@ -251,16 +250,15 @@ image.
 ## Absence matters
 
 Stock Windows does not ship most of these values at all, so the stock state **deletes** them
-rather than writing a zero. For `OverlayTestMode` this is documented behaviour: `5` disables
-MPO, and the enable is the value's **absence**. Writing `0` is not the same thing and does
-not re-enable it.
+rather than writing a zero. For `OverlayTestMode`, `5` disables MPO; DWM acts only on `4`
+and `5`, so `0` also leaves MPO on, but deleting the value is the clean undo.
 
 ## Requirements
 
 - Windows 10/11, 64-bit
 - PowerShell 5.1 or 7+, **64-bit host**, FullLanguage mode
-- Administrator (for `Mpo`, `Dwm`, `Fso`, the `GameDvr` policy value and any PresentMon
-  capture; `WindowedOpt` and `GameFso` are per-user)
+- Administrator (for `Mpo`, `Dwm`, the `GameDvr` policy value and any PresentMon
+  capture; `Fso`, `WindowedOpt` and `GameFso` are per-user)
 - PresentMon, only for `-Measure` / menu `[V]`. Everything else has no dependencies.
 
 The script refuses to run in a 32-bit host: `HKLM\SOFTWARE` is redirected to `WOW6432Node`

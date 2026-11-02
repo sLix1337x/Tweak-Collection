@@ -16,9 +16,9 @@ logical cores.
 On a modern CPU (5950X onwards), disabling SMT discards 15–30 % of throughput. Modern
 engines use many threads and the Windows scheduler understands the topology.
 
-It can be tested on a genuinely CPU-bound competitive title. See the
-[CS2 per-process alternative](../../../cs2/system/#cpu-scheduling), which confines the
-game to physical cores without removing the threads from everything else.
+CS2 is the reported exception, where SMT off has raised frame rates in community
+tests. Use the [CS2 per-process alternative](../../../cs2/system/#cpu-scheduling), which
+confines the game to physical cores without removing the threads from everything else.
 
 ### "Disable CPU virtualisation"
 
@@ -30,11 +30,12 @@ game to physical cores without removing the threads from everything else.
   prefer virtualisation-based protections. Some will refuse to launch.
 - WSL, Windows Sandbox, Docker, Hyper-V and Android emulators all stop working.
 
-The performance claim is that VBS costs a few percent, which it can in some titles. To
+The performance claim is that VBS costs performance, which it does — around 8–10 % on
+average across games, per [security](../../security/#vbs-and-hvci--the-one-real-trade). To
 reclaim that specifically, disable **Memory Integrity/HVCI** in Windows Security →
 Device Security → Core Isolation: reversible in two clicks, and it leaves
 virtualisation available. Disabling virtualisation in firmware is a security downgrade
-for the same few percent.
+for the same cost.
 
 ### "Disable C-states"
 
@@ -49,14 +50,20 @@ This covers *core* C-states. **DF C-states** are a separate setting covering the
 Fabric, on both sockets — see [AM4](../am4/#fabric-and-link-power-states) or
 [AM5](../am5/#fabric-and-link-power-states).
 
-The Ultimate Performance power plan gets most of the benefit with none of the thermal
-cost, and is reversible.
+Disabling C-states in BIOS is the outdated form of this. Where idle-exit latency
+matters, the power plan's idle settings are the reversible place to change it — and they
+cost idle power too. The Ultimate Performance plan alone only unparks cores; they still
+enter C-states.
 
 ### "Disable the iGPU"
 
 **Only for a specific conflict.** An idle integrated GPU costs essentially nothing, can
 drive a secondary display, handles video decode, and is the only way to see a POST
 screen when the discrete card fails.
+
+One known case: FACEIT's anti-cheat can hang at boot on a system with an iGPU and a dGPU
+and Above 4G Decoding on. FACEIT's fix is turning Above 4G Decoding off, which also
+removes Resizable BAR; disabling an unused iGPU is the alternative to test.
 
 ### "Disable Secure Boot"
 

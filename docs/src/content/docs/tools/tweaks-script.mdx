@@ -25,19 +25,18 @@ cd Tweak-Collection/scripts/tweaks
 Run it from an **elevated** PowerShell window: the picker reads live system state
 and needs administrator rights for that. `-List` is the one mode that does not.
 
-Windows blocks scripts downloaded from the internet by default. Either unblock the
-file once:
-
-```powershell
-Unblock-File .\Tweaks.ps1
-```
-
-…or run it with an execution policy scoped to the current process only, which
-resets when the window closes:
+On Windows client editions the default execution policy is `Restricted`, which
+refuses every script, downloaded or not. Either double-click `Tweaks.cmd`, which
+launches the script with the policy bypassed for that one process, or do the same by
+hand. The bypass is scoped to the current process only and ends when the window
+closes:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Tweaks.ps1 -List
 ```
+
+If the file came as a browser download rather than a `git clone`, it also carries the
+downloaded-from-the-internet mark; `Unblock-File .\Tweaks.ps1` removes it.
 
 ## Running it
 
@@ -124,9 +123,11 @@ Individual tweaks, whole categories, or `all` can be named.
 .\Tweaks.ps1 -Apply privacy,latency,power.ultimate
 ```
 
-Before applying anything the script attempts a system restore point. If System
-Protection is off, or Windows refuses because one was made in the last 24 hours, it
-warns and continues. The per-tweak backup file is written regardless.
+Before applying anything the script attempts a system restore point. It does not
+switch System Protection on: if that is off, or Windows skips the point because one
+was made in the last 24 hours, it warns and continues. The restore point is made
+through Windows PowerShell 5.1 even when the script runs under PowerShell 7, which
+lacks the cmdlet. The per-tweak backup file is written regardless.
 `-NoRestorePoint` skips the step.
 
 :::tip[Recommended order]

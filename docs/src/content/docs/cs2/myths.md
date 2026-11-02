@@ -36,44 +36,45 @@ that produce the opposite of their stated effect.
 | `SystemResponsiveness = 0` frees 20 % CPU for the game | **Myth twice over** | The MMCSS reservation only applies to threads that register with MMCSS, and no CS2 registration has been demonstrated. Separately, `0` rounds to the default of 20. [Mechanism](../../tweaks/latency/#latency.system-responsiveness). |
 | `TcpAckFrequency` / `TCPNoDelay` improve hit registration | **Wrong protocol** | TCP settings; CS2 gameplay traffic is UDP. |
 | `netsh int tcp set global autotuninglevel=disabled` reduces input lag | **Myth** | TCP receive-window control — a throughput mechanism. Microsoft's position is that disabling it limits speeds; no path to UDP traffic or cursor feel. |
-| `DisablePagingExecutive` / `LargeSystemCache` | **Harmful** | Server-oriented values that reduce memory available to games. Revert if an "optimisation pack" set them. [More](../../reference/debunked/storage-and-memory/). |
+| `LargeSystemCache = 1` | **Harmful** | Server-oriented value that favours the file cache over memory available to games. `0` is already the client default. Revert if an "optimisation pack" set it. [More](../../reference/debunked/storage-and-memory/). |
+| `DisablePagingExecutive = 1` | **Unproven** | Keeps kernel and driver code resident; with RAM to spare it is not under pressure to be paged out. No measurement either way. [More](../../reference/debunked/storage-and-memory/). |
 | Disable the pagefile for FPS | **Harmful** | Commit-limit crashes under pressure, no upside. System-managed on NVMe is correct. |
 | `Win32PrioritySeparation` "26" | **Trap** | Programs profile is hex `0x26` = **decimal 38**. Typing 26 on the decimal radio writes `0x1A` — the long/fixed profile, the opposite. The stock value already resolves to short/variable via OS defaults. [Full decode](../../reference/win32priorityseparation/). |
 | Force HPET (`useplatformclock true`) | **Harmful** | Adds latency per timer read. The `useplatformtick yes` companion is a debugging flag associated with input lag in extended testing. [More](../../reference/debunked/scheduler/). |
-| `disabledynamictick yes` = free FPS | **Placebo, with a risk** | Debugging feature. On thermally constrained systems the extra wake-ups can *reduce* sustained clocks. |
+| `disabledynamictick yes` = free FPS | **Placebo, with a risk** | Debugging feature. The constant tick keeps waking idle cores; on thermally constrained systems that can *reduce* sustained clocks. Before 24H2 it can also stop quantum expiration being checked. [More](../../reference/debunked/scheduler/). |
 
 ## Actively backwards
 
 The popular action here makes the outcome worse, not merely unchanged.
 
-**"ReBAR always helps."** CS2 is the documented exception. Controlled Dust2 testing
+**"ReBAR always helps."** CS2 is the reported exception. Controlled Dust2 testing
 found overall performance similar but roughly **6 % better 1 % lows with ReBAR
 disabled**. Single-source, and free to check.
 
 **"V-Sync must be off with G-Sync."** Inverted. With variable refresh active,
-control-panel V-Sync acts as a ceiling guard rather than a frame-pacing mechanism; off,
+driver V-Sync acts as a ceiling guard rather than a frame-pacing mechanism; off,
 it lets spikes exceed the range and tear. Tested configuration: G-Sync on,
-control-panel V-Sync on, cap three below refresh.
+driver V-Sync on, cap three below refresh.
 [Details](../frame-cap/#with-g-sync-or-freesync).
 
 **"Lower the monitor to match the cap."** Harmful for VRR. 144 Hz at a 144 cap instead
 of 240 Hz at 237 shrinks the VRR window, risks low-framerate compensation, and
 increases latency at an identical frame rate.
 
-**"Always disable C-states for latency."** Inverted on AM5 X3D, where the documented
-fix for micro-stutter is setting Global C-State Control explicitly to *Enabled* —
-"Auto" on many boards silently means Disabled and breaks idle coordination between the
-CCDs, the fabric and the scheduler. Blanket-disabling also kills turbo on locked CPUs.
-If deep-C-state wake latency is a measured problem, the targeted fix is the idle
-demote/promote thresholds, not `Processor Idle Disable`, which pins every core at C0
-and costs the thermal headroom boost needs.
+**"Always disable C-states for latency."** Inverted on AM5 X3D, where the reported
+fix for micro-stutter is setting Global C-State Control explicitly to *Enabled*;
+"Auto" on some boards reportedly leaves C-states off, breaking idle coordination
+between the CCDs, the fabric and the scheduler. Blanket-disabling also kills turbo on
+locked CPUs. If deep-C-state wake latency is a measured problem, the documented cap is
+`Processor idle state maximum` (`IDLESTATEMAX`), not `Processor Idle Disable`, which
+pins every core at C0 and costs the thermal headroom boost needs.
 
-**"Unpark the cores for instant FPS."** Check first. Instrumented testing found stock
-Windows 11 desktops never park at all; where parking does happen it is a tail-latency
-problem, not an average-speed one. [The measurement](../system/#cpu-scheduling).
+**"Unpark the cores for instant FPS."** Check first. One instrumented test (i9-14900F)
+found stock Windows 11 parked no cores at all; where parking does happen it is a
+tail-latency problem, not an average-speed one. [The measurement](../system/#cpu-scheduling).
 
-**"8 kHz polling is a free competitive edge."** Costs ~20 % of frame rate at 4 kHz and
-~33 % at 8 kHz on mid-range CPUs in community captures. It also needs 1600+ DPI to
+**"8 kHz polling is a free competitive edge."** Cost ~20 % of frame rate at 4 kHz and
+~33 % at 8 kHz on a mid-range CPU in a CS:GO capture. It also needs 1600+ DPI to
 saturate, making the popular low-DPI pairing self-defeating.
 [Details](../game-settings/#input).
 
@@ -101,8 +102,8 @@ EDC at 150 A measured higher sustained clocks, 12 °C lower temperatures and a h
 benchmark score than the board's unlimited profile.
 [Numbers](../../guides/bios/am4/#pbo-and-curve-optimizer).
 
-**"8× MSAA looks smoother."** Up to 18 % of average frame rate, the single most
-expensive setting in the menu. [The cost map](../game-settings/#video-settings).
+**"8× MSAA looks smoother."** Up to 18 % of average frame rate, second only to Global
+Shadow Quality Very High in the menu. [The cost map](../game-settings/#video-settings).
 
 **"Shadows on Low removes enemy shadows."** False, and the wrong control: player
 shadows are governed by Dynamic Shadows, which stays on All. Global Shadow Quality is a

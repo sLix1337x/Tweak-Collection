@@ -42,13 +42,13 @@ Test HVCI specifically: Windows Security → Device Security → Core Isolation 
 available, and does not touch Secure Boot or the TPM. Measure with
 [frame-time captures](../benchmark/frame-times/) before and after, three runs each.
 
-Disabling virtualisation in firmware for the same few percent takes VBS, Credential
+Disabling virtualisation in firmware for the same cost takes VBS, Credential
 Guard, WSL and anti-cheat compatibility with it.
 
 :::caution[On a competitive machine the platform decides this]
-FACEIT requires TPM 2.0 and Secure Boot from every player, has rolled IOMMU and VBS
-requirements out to effectively its whole player base, and demands Memory Integrity
-from some accounts. Valve matchmaking and Premier require none of it.
+FACEIT requires TPM 2.0 and Secure Boot from every player, has been rolling IOMMU and
+VBS requirements out in waves since April 2025, and demands Memory Integrity from some
+accounts. Valve matchmaking and Premier require none of it.
 
 "Maximum performance" and "can play on FACEIT" are therefore two machine
 configurations. The fork, with the registry and BCD state on each side, is on the
@@ -72,7 +72,7 @@ Nothing in the tweak list touches anti-cheat. Three things elsewhere do:
 | --- | --- |
 | "Disable Defender for FPS" | Real-time scanning costs I/O, not frames. |
 | Blanket Defender exclusions for game folders | Removes scanning from the directory most likely to receive an untrusted file. Where an exclusion is unavoidable, exclude a shader cache, not a downloads path. |
-| Disabling Secure Boot for compatibility | The compatibility problem is usually an unsigned driver, which is what Secure Boot exists to stop. |
+| Disabling Secure Boot for compatibility | The compatibility problem is usually an old or unsigned driver. Driver signature enforcement blocks it; Secure Boot stops that enforcement being switched off (test signing, `nointegritychecks`). |
 | Disabling SmartScreen, UAC and Windows Update as "debloat" | None has a measurable frame-time effect, and each removes a defence. |
 
 Privacy settings change what leaves the machine rather than what protects it, and are

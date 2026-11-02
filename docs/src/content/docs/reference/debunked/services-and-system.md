@@ -13,7 +13,8 @@ tags:
 <p class="tc-verdict-row"><span class="tc-verdict tc-verdict-harmful">Harmful</span></p>
 
 `msconfig` cannot distinguish a vendor telemetry uploader from the driver service a
-GPU, audio interface or anti-cheat depends on, and keeps no record of what changed.
+GPU, audio interface or anti-cheat depends on; its only record is each disabled
+service's original start type, under `HKLM\SOFTWARE\Microsoft\Shared Tools\MSConfig\services`.
 
 Use **Autoruns** from Sysinternals: it shows publisher, signature and the exact key,
 and allows individual entries to be re-enabled.
@@ -29,8 +30,8 @@ service.
 
 <p class="tc-verdict-row"><span class="tc-verdict tc-verdict-placebo">Placebo on SSD/NVMe</span></p>
 
-Genuinely helped on spinning disks, where it caused thrashing. On NVMe the
-prefetching is cheap and the memory it uses is standby memory, which is released on
+Disabling it genuinely helped on spinning disks, where SysMain caused thrashing. On
+NVMe the prefetching is cheap and the memory it uses is standby memory, which is released on
 demand. Disabling it gains nothing measurable.
 
 ## Disabling `wuauserv` (Windows Update) — Harmful
@@ -38,7 +39,7 @@ demand. Disabling it gains nothing measurable.
 <p class="tc-verdict-row"><span class="tc-verdict tc-verdict-harmful">Harmful</span></p>
 
 No security patches. If update timing is the problem, set active hours and metered
-connections, or use `sc config wuauserv start= demand`. Do not disable it.
+connections. Do not disable it.
 
 ## Disabling `WaaSMedicSvc` — Invalid
 

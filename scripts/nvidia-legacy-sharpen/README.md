@@ -1,7 +1,7 @@
 # NVIDIA legacy image sharpening
 
 Two `.reg` files that bring the driver-side **Image Sharpening** option back to
-NVIDIA Control Panel on drivers that hid it behind the NVIDIA App.
+NVIDIA Control Panel on drivers since 496.76, which removed it.
 
 | File | Does |
 | --- | --- |

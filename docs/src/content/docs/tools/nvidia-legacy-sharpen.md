@@ -25,9 +25,9 @@ Scaling blurs: every edge is smeared across the interpolated pixels. The fix was
 Control Panel → *Manage 3D settings* → **Image Sharpening**, which runs in the driver at
 the same stage as the scaling.
 
-With the NVIDIA App release (driver branch 566, late 2024) that option was removed from
-the Control Panel. Sharpening moved into the NVIDIA App's overlay filters, which require
-the overlay running in the game.
+That option was removed from the Control Panel with driver 496.76 (November 2021), when it
+was folded into NVIDIA Image Scaling. What remains is Image Scaling, which also rescales,
+and the overlay filters, which need the overlay running in the game.
 
 ## The fix
 
@@ -38,8 +38,7 @@ HKLM\SYSTEM\CurrentControlSet\Services\nvlddmkm\Parameters\FTS
   EnableGR535 = 0   (REG_DWORD)
 ```
 
-`GR535` is NVIDIA's internal id for the change that removed the option; `0` turns
-that change off. After a reboot **Image Sharpening** is back under *Manage 3D
+`0` turns that toggle off. After a reboot **Image Sharpening** is back under *Manage 3D
 settings*, exactly as it was.
 
 Merge `Nvidia Legacy Sharpen.reg`, reboot, then in the Control Panel:
@@ -68,8 +67,8 @@ $u = [Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($sys.FullName))
 On driver 610.88 (`nvlddmkm.sys` 32.0.16.1088) both names are present, so the
 current driver still reads this value from this key.
 
-**Why two keys in the file.** Drivers from the 566 branch onward moved their registry
-parameters under `\Parameters`; older drivers read the key directly under `nvlddmkm`.
+**Why two keys in the file.** Newer drivers read their parameters under `\Parameters`;
+older drivers read the key directly under `nvlddmkm`.
 The `.reg` writes both so it works either side of that change. It does not write
 `ControlSet001` separately, as circulating versions do — `CurrentControlSet` *is* the
 active control set.

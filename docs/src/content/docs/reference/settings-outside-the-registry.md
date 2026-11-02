@@ -117,9 +117,9 @@ Three rules:
 
 - **Never CPU 0.** Windows concentrates its own housekeeping interrupts there, which
   makes the widely copied "pin everything to CPU 0" instruction backwards.
-- **The GPU first, if anything.** It raises an interrupt per completed frame, making it
-  the highest-frequency and highest-cost device; the NIC and USB controller are a
-  distant second and third. Leave a NIC with healthy RSS alone — RSS already spreads
+- **The GPU first, if anything.** Its interrupts and DPCs sit directly in the frame
+  path. That is a priority call, not a count: a mouse polling at 4–8 kHz can raise more
+  interrupts per second. Leave a NIC with healthy RSS alone — RSS already spreads
   receive processing across its own CPU set.
 - **Verify it took effect.** Drivers read the policy at device start, so a registry
   write with no device restart does nothing. Per-CPU interrupt counters are the only

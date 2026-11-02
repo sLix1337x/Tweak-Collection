@@ -1,6 +1,6 @@
 ---
 title: CS2 Zen3 Frametime.pow
-description: An exported power plan for a Ryzen 5950X desktop. Ultimate Performance plus a handful of deliberate changes, with every difference listed.
+description: An exported power plan for a Ryzen 5950X desktop. A Balanced-based plan with Ultimate-style overrides, with every difference from Ultimate listed.
 sidebar:
   order: 6
 tags:
@@ -8,9 +8,9 @@ tags:
   - latency
 ---
 
-An exported power plan for a Ryzen 5950X desktop.
-[Ultimate Performance](../../tweaks/power/#power.ultimate) underneath; every difference
-is listed below.
+An exported power plan for a Ryzen 5950X desktop: a Balanced-based plan with
+[Ultimate Performance](../../tweaks/power/#power.ultimate)-style overrides. Every difference
+from Ultimate is listed below.
 
 The plan is one step of the [CS2 build order](../../cs2/#build-order) and on its own is
 worth less than the [frame-cap decision](../../cs2/frame-cap/).
@@ -43,7 +43,6 @@ is identical to Ultimate. AC values only.
 | Setting | This plan | Ultimate | Why |
 | --- | --- | --- | --- |
 | Minimum processor state | 5 % | 100 % | Lets idle cores drop their clock instead of holding P0. On Zen 3 the SMU decides the actual frequency anyway; this stops Windows requesting maximum on every core continuously, which costs idle heat. |
-| Processor performance boost policy | 60 % | 100 % | How far above nominal Windows lets the processor boost opportunistically. Lower narrows the band of frequency swings at the cost of peak clock. |
 | USB selective suspend | Off | On | As [`power.usb-suspend-off`](../../tweaks/power/#power.usb-suspend-off), baked into the plan so it survives a plan switch. |
 | Turn off display after | Never | 15 min | A monitor waking mid-session is a stutter and a black screen. |
 | Display brightness | 75 % | 100 % | Applies only to a panel Windows can dim. |
@@ -66,15 +65,16 @@ Both plans keep every core unparked, so the three timing values never fire.
 | Minimum processor state, class 1 and 2 | 5 % | 100 % |
 | Energy performance preference, class 1 and 2 | 33 % | 0 % |
 
-"Processor Power Efficiency Class 1 / 2" are the extra cores on a heterogeneous CPU:
-Intel E-cores, Arm little cores. A 5950X has one class, so Windows never consults
-these. Listed because they appear in the diff.
+"Processor Power Efficiency Class 1 / 2" are the faster core classes on a heterogeneous
+CPU: Windows numbers the most efficient cores 0, so on Intel hybrid class 1 is the
+P-cores. A 5950X has one class, so Windows never consults these. Listed because they appear in the diff.
 
 ### Inherited from Balanced, not chosen
 
 | Setting | This plan | Ultimate |
 | --- | --- | --- |
 | Power plan type | Balanced | High performance |
+| Processor performance boost policy | 60 % | 100 % |
 | AHCI link power management | HIPM | Active |
 | AHCI link power management, adaptive | 100 ms | 0 |
 | NVMe power state transition latency tolerance, primary / secondary | 15 ms / 100 ms | 0 / 0 |
@@ -106,10 +106,10 @@ Four `powercfg` lines on top of Ultimate Performance (brightness omitted — no 
 a desktop monitor):
 
 ```powershell
-powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
-powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 7c3f2a91-5d4e-4b8a-9e62-1f0d8c4b3a75
+powercfg /setactive 7c3f2a91-5d4e-4b8a-9e62-1f0d8c4b3a75
 powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMIN 5
-powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR 45bcc044-d885-43e2-8605-ee0ec6e96b59 60   # boost policy, no alias
+powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR 45bcc044-d885-43e2-8605-ee0ec6e96b59 60   # boost policy (Balanced value), no alias
 powercfg /setacvalueindex SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0
 powercfg /setacvalueindex SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 0
 powercfg /setactive SCHEME_CURRENT

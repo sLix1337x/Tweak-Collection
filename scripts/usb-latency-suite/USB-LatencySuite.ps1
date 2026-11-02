@@ -141,47 +141,31 @@ $Modules = [ordered]@{
     }
     idle = @{
         Title = 'Device Idle / D-States'
-        Desc  = 'Keeps devices in D0 instead of dropping to D1/D2/D3 and D3cold.'
+        Desc  = 'Keeps devices in D0 instead of dropping to D1/D2/D3 when idle.'
     }
     lpm = @{
-        Title = 'Link Power Management'
-        Desc  = 'Disables USB 3.x U1/U2 link states (Enhanced Power Management).'
+        Title = 'Enhanced Power Management'
+        Desc  = "Turns off Enhanced Power Management per device, Microsoft's own workaround for USB devices that drop off or stop charging. Not the U1/U2 link-state switch."
     }
     wake = @{
         Title = 'Wake Capability'
-        Desc  = 'Disarms wake-from-sleep on USB/HID devices. Mouse will no longer wake the PC.'
-    }
-    irq = @{
-        Title = 'Interrupt Threshold'
-        Desc  = 'One interrupt per transfer on xHCI instead of coalescing. The real latency knob.'
+        Desc  = 'Disarms wake-from-sleep on USB/HID devices. Mouse will no longer wake the PC. A preference, not a latency change.'
     }
 }
 
 $Tweaks = @(
     # ── per-device -------------------------------------------------------------
+    # Only values a USB/HID driver reads from this key. Earlier versions also wrote
+    # EnableSelectiveSuspend, DeviceSelectiveSuspended and D3ColdSupported here, and a
+    # set of driver-service values (DisableSelectiveSuspend, InterruptThreshold, ...).
+    # No reader was found for any of them at those locations, so they are no longer
+    # written. Backups from those versions still revert: the revert replays the file.
     @{ Cat='suspend'; Scope='device'; Sub='Device Parameters';     Name='SelectiveSuspendEnabled';        Value=0 }
-    @{ Cat='suspend'; Scope='device'; Sub='Device Parameters';     Name='EnableSelectiveSuspend';         Value=0 }
-    @{ Cat='suspend'; Scope='device'; Sub='Device Parameters';     Name='DeviceSelectiveSuspended';       Value=0 }
     @{ Cat='idle';    Scope='device'; Sub='Device Parameters';     Name='AllowIdleIrpInD3';               Value=0 }
     @{ Cat='idle';    Scope='device'; Sub='Device Parameters';     Name='DeviceIdleEnabled';              Value=0 }
-    @{ Cat='idle';    Scope='device'; Sub='Device Parameters';     Name='D3ColdSupported';                Value=0 }
     @{ Cat='idle';    Scope='device'; Sub='Device Parameters\WDF'; Name='IdleInWorkingState';             Value=0 }
     @{ Cat='lpm';     Scope='device'; Sub='Device Parameters';     Name='EnhancedPowerManagementEnabled'; Value=0 }
     @{ Cat='wake';    Scope='device'; Sub='Device Parameters';     Name='SystemWakeEnabled';              Value=0 }
-
-    # ── driver services --------------------------------------------------------
-    @{ Cat='suspend'; Scope='service'; Key='usbhub\Parameters';           Name='DisableSelectiveSuspend';        Value=1 }
-    @{ Cat='suspend'; Scope='service'; Key='USBHUB3\Parameters';          Name='DisableSelectiveSuspend';        Value=1 }
-    @{ Cat='suspend'; Scope='service'; Key='USBXHCI\Parameters';          Name='DisableSelectiveSuspend';        Value=1 }
-    @{ Cat='suspend'; Scope='service'; Key='usbehci\Parameters';          Name='DisableSelectiveSuspend';        Value=1 }
-    @{ Cat='suspend'; Scope='service'; Key='HidUsb\Parameters';           Name='SelectiveSuspendEnabled';        Value=0 }
-    @{ Cat='idle';    Scope='service'; Key='HidUsb\Parameters';           Name='IdleEnabled';                    Value=0 }
-    @{ Cat='idle';    Scope='service'; Key='HidClass\Parameters';         Name='IdleInWorkingState';             Value=0 }
-    @{ Cat='idle';    Scope='service'; Key='usbhub\Parameters';           Name='SelectiveSuspendTimeout';        Value=0 }
-    @{ Cat='lpm';     Scope='service'; Key='USBHUB3\Parameters';          Name='EnhancedPowerManagementEnabled'; Value=0 }
-    @{ Cat='lpm';     Scope='service'; Key='USBXHCI\Parameters';          Name='EnhancedPowerManagementEnabled'; Value=0 }
-    @{ Cat='irq';     Scope='service'; Key='USBXHCI\Parameters\Device';   Name='InterruptThreshold';             Value=1 }
-    @{ Cat='irq';     Scope='service'; Key='USBHUB3\Parameters\Device';   Name='InterruptThreshold';             Value=1 }
 )
 #endregion
 

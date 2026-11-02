@@ -22,13 +22,18 @@ into a wall, wrong on a laptop running on battery.
 <TweakMeta risk="Low" evidence="Documented" reboot={false} />
 
 Windows ships a hidden Ultimate Performance scheme that biases toward high
-processor performance and less parking. On consumer SKUs it is commonly made
-visible by duplicating it.
+processor performance and less parking. On consumer SKUs it is made visible by
+duplicating it. Without a destination GUID, `/duplicatescheme` creates a copy under
+a new GUID on every run, and `/setactive` on the template GUID does not select that
+copy, so the script names the copy's GUID itself:
 
 ```powershell
-powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61
-powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61
+powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 b4bc01e2-8fa7-4e39-b963-3989a5fa2be4
+powercfg /setactive b4bc01e2-8fa7-4e39-b963-3989a5fa2be4
 ```
+
+Revert switches back to the previous plan and deletes the copy, unless it already
+existed before the tweak ran.
 
 **Cost:** higher idle power draw and idle temperatures — tens of watts at the desktop
 on a 16-core part. Cores never park, so there is no wake-up ramp when work arrives.
@@ -44,9 +49,11 @@ C0 and spends the thermal headroom boost depends on. Reference performance power
 strip parking, selective suspend, sleep and disk power savings while leaving processor
 idle alone.
 
-Where deep C-state wake latency is a demonstrated problem, the surgical option is the
-hidden pair **Processor idle demote threshold** and **Processor idle promote
-threshold** set to 100, holding cores no deeper than C1.
+Where deep C-state wake latency is a demonstrated problem, the documented cap is the
+hidden **Processor idle state maximum** (`IDLESTATEMAX`), not `IDLEDISABLE`. The idle
+promote/demote thresholds are sometimes suggested instead; Microsoft documents them as
+idleness percentages, so at `100` a core is not promoted out of its shallowest idle
+state, but no published measurement shows a benefit.
 :::
 
 :::note
@@ -70,8 +77,12 @@ problem. LatencyMon attribution alone does not prove disabling ASPM is the fix.
 
 ```powershell
 powercfg /setacvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 0
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 0
 powercfg /setactive SCHEME_CURRENT
 ```
+
+The script writes both the plugged-in (AC) and battery (DC) value, and captures both,
+together with the plan they belong to, so revert puts each back in the right plan.
 
 The setting is a three-way index, not a switch:
 
@@ -107,6 +118,9 @@ value is the global switch and the one the script changes.
 powercfg /setacvalueindex SCHEME_CURRENT `
   2a737441-1930-4402-8d77-b2bebba308a3 `
   48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0
+powercfg /setdcvalueindex SCHEME_CURRENT `
+  2a737441-1930-4402-8d77-b2bebba308a3 `
+  48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0
 powercfg /setactive SCHEME_CURRENT
 ```
 
@@ -123,11 +137,12 @@ Two further layers apply when the plan setting alone does not fix a device:
   which is why some devices have the tab and others do not.
 
 :::note[Why the audio symptom is this setting and not the audio driver]
-`USBAUDIO.sys` registers its own idle detection, but its AC default is
-`PerformanceIdleTime = 0`, so a USB audio device on wall power never idles out of D0
-by that path. The 30-second timer (`ConservationIdleTime`) applies only on battery, and
-24H2 added separate Modern-Standby timers on top. On a plugged-in machine, clicks and
-vanishing interfaces trace to selective suspend and hub power-off.
+`USBAUDIO.sys` registers its own idle detection, but its default
+`PerformanceIdleTime = 0`, so with the plan's *Device idle policy* on Performance a USB
+audio device never idles out of D0 by that path. The 30-second timer
+(`ConservationIdleTime`) applies only under Power savings, and 24H2 added separate
+timers on top. Otherwise, clicks and vanishing interfaces trace to selective suspend
+and hub power-off.
 :::
 
 <span id="system.fast-startup-off" class="tc-anchor" />

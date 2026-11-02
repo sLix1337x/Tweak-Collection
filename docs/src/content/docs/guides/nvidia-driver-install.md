@@ -9,7 +9,7 @@ tags:
   - anti-cheat
 ---
 
-Installing a driver without the GeForce Experience components has more effect than any
+Installing a driver without the NVIDIA App / GeForce Experience components has more effect than any
 registry value here.
 
 ## Tools
@@ -57,10 +57,10 @@ Option by option:
 | **Disable Multiplane Overlay (MPO)** | ✅ | A Windows compositor feature with a long history of flickering, black flashes and stutter on multi-monitor and mixed-refresh-rate setups. |
 | **Disable Ansel** | ✅ | In-game screenshot tool that injects into games. Overhead when unused. |
 | **Show Expert Tweaks** | ✅ | Reveals the rest of this list. |
-| **Disable Driver Telemetry** | ✅ | Removes the telemetry components rather than disabling them afterwards. Marked experimental by NVCleanstall. |
+| **Disable Driver Telemetry** | ⬜ | **Leave off** on an anti-cheat machine: it patches the driver package itself, and some anti-cheats flag the result. Marked experimental by NVCleanstall. |
 | **Disable NVIDIA Container** | ⬜ | **Leave off.** Breaks the NVIDIA Control Panel, required for per-application power management and V-Sync settings. |
 | **Disable NVIDIA HD Audio device sleep timer** | ✅ | Stops the GPU's HDMI/DP audio output sleeping, which cuts off the first half-second of audio after a pause. |
-| **Enable Message Signaled Interrupts** | ✅ | Equivalent to [`nvidia.msi-mode`](../../tweaks/nvidia/#nvidia.msi-mode), applied so it survives the install. |
+| **Enable Message Signaled Interrupts** | Optional | RTX 30 and 40 cards already use MSI. On older cards it is [`nvidia.msi-mode`](../../tweaks/nvidia/#nvidia.msi-mode), applied so it survives the install. |
 | **Interrupt Policy / Priority** | Default | Raising interrupt priority has no documented or measured benefit on a desktop GPU. |
 | **Disable HDCP** | ⬜ | **Leave off**, despite the screenshot. See below. |
 | **Apply NVENC Video Encoding Session Limit Patch** | ⬜ | Lifts NVIDIA's limit on concurrent NVENC encode sessions. Relevant only for several simultaneous streams. |
@@ -103,16 +103,14 @@ It can also be disabled after the fact:
 ```text
 HKLM\SOFTWARE\Microsoft\Windows\Dwm
   OverlayTestMode = 5   (REG_DWORD)
-  OverlayMinFPS   = 0   (REG_DWORD)  — required on 24H2 and later
 ```
 
-Reboot afterwards. Delete both values to re-enable MPO.
+`OverlayTestMode = 5` is NVIDIA's published workaround. Reboot afterwards. Delete the
+value to re-enable MPO.
 
-:::caution[Why the single-value version stopped working]
-`OverlayTestMode = 5` alone is NVIDIA's published workaround and was sufficient for
-years. On Windows 11 **24H2 and later**, including 25H2, the desktop window manager
-reads both values, and setting only `OverlayTestMode` often changes nothing. Guides and
-`.reg` files written before that change are half a fix.
+:::caution[Not `OverlayMinFPS`]
+Some guides add `OverlayMinFPS = 0`. Microsoft documents that value as making overlay
+assignment *more* likely, the opposite of disabling MPO.
 
 Cost: MPO is what lets a game keep an independent flip presentation when an overlay
 (volume OSD, a notification) appears on top of it. With MPO off, those moments fall

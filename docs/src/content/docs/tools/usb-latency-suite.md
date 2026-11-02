@@ -10,9 +10,9 @@ tags:
 ---
 
 Windows saves power on USB by letting devices go idle and suspending individual ports.
-Waking one costs milliseconds and can delay or drop input reports. This tool disables
-those mechanisms per driver and per device, recording the previous value of everything
-it writes.
+On a device that supports selective suspend, the first report after an idle timeout
+waits for the port to resume. This tool disables those mechanisms per device, recording
+the previous value of everything it writes.
 
 ```
 scripts/usb-latency-suite/
@@ -25,11 +25,14 @@ scripts/usb-latency-suite/
 
 | Mechanism | What it costs |
 | --- | --- |
-| **Selective suspend** | The hub driver puts an idle port into a low-power state; waking it delays the next input report. |
-| **Device idle / D-states** | The device drops to a lower power state between reports, and has to be brought back up before the next one. |
-| **Link power management** | U1/U2 link states on USB 3.x. |
-| **Wake capability** | Keeping wake armed keeps extra power-management logic in the path. |
-| **Interrupt threshold** | A latency knob rather than a power switch: an interrupt per transfer instead of coalescing them. |
+| **Selective suspend** | The hub driver suspends an idle port after a timeout; the first report after it waits for the resume. Windows leaves it off for HID devices unless the device opts in. |
+| **Device idle / D-states** | The device drops to a lower power state when idle, and has to be brought back up before the next report. |
+| **Enhanced Power Management** | Per device; Microsoft's workaround value for devices that drop off after idle. Not the USB 3 U1/U2 link-state switch. |
+| **Wake capability** | Lets the device wake the PC from sleep. Disarming it is a preference, not a latency change. |
+
+There is no interrupt-threshold module. Earlier versions wrote `InterruptThreshold=1`,
+but nothing reads it: Windows' xHCI driver sets a fixed 50 µs interrupt moderation
+interval (see [Input](../../guides/input/)).
 
 Each is an independent toggle. The device list is built from a single
 `Get-PnpDevice -PresentOnly` call, so one mouse can be tuned without touching the

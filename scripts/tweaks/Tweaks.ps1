@@ -77,6 +77,12 @@ Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 
 #region Tweak definitions
+# The hidden Ultimate Performance template, and the fixed GUID its copy is created
+# under. Without a destination GUID, /duplicatescheme mints a new one on every run,
+# and /setactive on the template GUID does not activate the copy.
+$UltimateTemplateGuid = 'e9a42b02-d5df-448d-aa00-03f14749eb61'
+$UltimateCopyGuid     = 'b4bc01e2-8fa7-4e39-b963-3989a5fa2be4'
+
 # Reg tweaks are declarative: the engine captures the old value, writes the new one,
 # and puts the old one back on revert. Imperative tweaks supply Capture/Set/Undo/Test.
 
@@ -87,26 +93,44 @@ $Tweaks = @(
         Id       = 'power.ultimate'
         Category = 'power'
         Title    = 'Activate the Ultimate Performance power plan'
-        Why      = 'Removes core parking and idle-state latency from the scheduler. Costs idle watts; on a desktop that is a fair trade.'
+        Why      = 'Stops core parking, so there is no unpark ramp when work arrives. Cores still enter C-states. Costs idle watts; on a desktop that is a fair trade.'
         Risk     = 'Low'
         Evidence = 'Documented (Microsoft power scheme, hidden by default on consumer SKUs)'
         Reboot   = $false
         Capture  = {
-            $active = (powercfg /getactivescheme) -replace '^.*GUID:\s*([0-9a-f-]+).*$', '$1'
-            @{ PreviousScheme = $active.Trim() }
+            # CopyExisted decides whether revert may delete the copy: one that was
+            # already there before this tweak ran is not ours to remove.
+            @{
+                PreviousScheme = Get-ActiveSchemeGuid
+                CopyExisted    = [bool]((powercfg /list) -match $UltimateCopyGuid)
+            }
         }
         Set      = {
-            $ultimate = 'e9a42b02-d5df-448d-aa00-03f14749eb61'
-            # Duplicating an already-duplicated scheme is a no-op error; ignore it.
-            powercfg /duplicatescheme $ultimate 2>&1 | Out-Null
-            powercfg /setactive $ultimate
+            $schemes = powercfg /list
+            if ($schemes -match $UltimateTemplateGuid) {
+                # Workstation SKUs list the plan itself; nothing to duplicate.
+                powercfg /setactive $UltimateTemplateGuid | Out-Null
+                return
+            }
+            if (-not ($schemes -match $UltimateCopyGuid)) {
+                powercfg /duplicatescheme $UltimateTemplateGuid $UltimateCopyGuid | Out-Null
+            }
+            powercfg /setactive $UltimateCopyGuid | Out-Null
         }
         Undo     = {
             param($state)
-            if ($state.PreviousScheme) { powercfg /setactive $state.PreviousScheme }
+            $previous = Get-StateValue $state 'PreviousScheme'
+            if ($previous) { powercfg /setactive $previous | Out-Null }
+            # The active scheme cannot be deleted, so only once the old one is back.
+            # A backup from before CopyExisted was recorded leaves the copy alone.
+            if ((Get-StateValue $state 'CopyExisted') -eq $false -and
+                (powercfg /list) -match $UltimateCopyGuid -and
+                (Get-ActiveSchemeGuid) -ne $UltimateCopyGuid) {
+                powercfg /delete $UltimateCopyGuid | Out-Null
+            }
         }
         Test     = {
-            (powercfg /getactivescheme) -match 'e9a42b02-d5df-448d-aa00-03f14749eb61'
+            (Get-ActiveSchemeGuid) -in @($UltimateTemplateGuid, $UltimateCopyGuid)
         }
     }
 
@@ -114,13 +138,13 @@ $Tweaks = @(
         Id       = 'power.pcie-aspm-off'
         Category = 'power'
         Title    = 'Disable PCIe Active State Power Management'
-        Why      = 'ASPM parks the PCIe link between transfers. Waking it adds microseconds to every GPU/NIC transaction and is a common source of DPC latency spikes.'
+        Why      = 'ASPM drops the PCIe link into a low-power state between transfers; waking it adds a small device- and platform-dependent delay. Relevant to a specific link-wake or DPC problem.'
         Risk     = 'Low'
         Evidence = 'Documented (PCIe spec + Windows power subgroup SUB_PCIEXPRESS)'
         Reboot   = $false
-        Capture  = { @{ Previous = (Get-PowerSettingIndex 'SUB_PCIEXPRESS' 'ASPM') } }
+        Capture  = { Get-PowerSettingState 'SUB_PCIEXPRESS' 'ASPM' }
         Set      = { Set-PowerSettingIndex 'SUB_PCIEXPRESS' 'ASPM' 0 }
-        Undo     = { param($state) if ($null -ne $state.Previous) { Set-PowerSettingIndex 'SUB_PCIEXPRESS' 'ASPM' $state.Previous } }
+        Undo     = { param($state) Restore-PowerSettingState 'SUB_PCIEXPRESS' 'ASPM' $state }
         Test     = { (Get-PowerSettingIndex 'SUB_PCIEXPRESS' 'ASPM') -eq 0 }
     }
 
@@ -128,13 +152,13 @@ $Tweaks = @(
         Id       = 'power.usb-suspend-off'
         Category = 'power'
         Title    = 'Disable USB selective suspend'
-        Why      = 'Stops Windows suspending USB ports. Removes the wake-up delay on mice, keyboards and audio interfaces.'
+        Why      = 'Stops Windows suspending idle USB ports. Matters for audio interfaces, DACs and capture devices that click, drop out or vanish after idle.'
         Risk     = 'Low'
         Evidence = 'Documented (Windows power subgroup 2a737441-…)'
         Reboot   = $false
-        Capture  = { @{ Previous = (Get-PowerSettingIndex '2a737441-1930-4402-8d77-b2bebba308a3' '48e6b7a6-50f5-4782-a5d4-53bb8f07e226') } }
+        Capture  = { Get-PowerSettingState '2a737441-1930-4402-8d77-b2bebba308a3' '48e6b7a6-50f5-4782-a5d4-53bb8f07e226' }
         Set      = { Set-PowerSettingIndex '2a737441-1930-4402-8d77-b2bebba308a3' '48e6b7a6-50f5-4782-a5d4-53bb8f07e226' 0 }
-        Undo     = { param($state) if ($null -ne $state.Previous) { Set-PowerSettingIndex '2a737441-1930-4402-8d77-b2bebba308a3' '48e6b7a6-50f5-4782-a5d4-53bb8f07e226' $state.Previous } }
+        Undo     = { param($state) Restore-PowerSettingState '2a737441-1930-4402-8d77-b2bebba308a3' '48e6b7a6-50f5-4782-a5d4-53bb8f07e226' $state }
         Test     = { (Get-PowerSettingIndex '2a737441-1930-4402-8d77-b2bebba308a3' '48e6b7a6-50f5-4782-a5d4-53bb8f07e226') -eq 0 }
     }
 
@@ -143,7 +167,7 @@ $Tweaks = @(
         Id       = 'system.fast-startup-off'
         Category = 'system'
         Title    = 'Disable Fast Startup (hiberboot)'
-        Why      = 'Fast Startup restores a hibernated kernel instead of booting cleanly, so driver and service state accumulates across "restarts". The single biggest source of "reboot fixed it, shutdown did not" weirdness. Hibernate itself stays available.'
+        Why      = 'Fast Startup restores a hibernated kernel instead of booting cleanly, so driver and service state accumulates across "restarts". A common source of "reboot fixed it, shutdown did not" weirdness. Hibernate itself stays available.'
         Risk     = 'Low'
         Evidence = 'Documented (HiberbootEnabled)'
         Reboot   = $true
@@ -157,7 +181,7 @@ $Tweaks = @(
         Id       = 'latency.gamedvr-off'
         Category = 'latency'
         Title    = 'Disable Game DVR / background recording'
-        Why      = 'Background capture keeps a rolling encode of the foreground game. Measurable frame-time cost on every GPU, and it is on by default.'
+        Why      = 'Background capture keeps a rolling encode of the foreground game. Measurable frame-time cost when it is on; the policy keeps it off even if re-enabled in Settings.'
         Risk     = 'Low'
         Evidence = 'Documented (GameDVR policy); effect reproducible in frame-time captures'
         Reboot   = $false
@@ -171,9 +195,9 @@ $Tweaks = @(
         Id       = 'latency.network-throttling-off'
         Category = 'latency'
         Title    = 'Disable multimedia network throttling'
-        Why      = 'By default Windows caps non-multimedia network processing to ~10 packets/ms while any multimedia app runs. Uncapping it removes a hard ceiling on packet rate.'
+        Why      = 'While a Medium/High MMCSS thread is scheduled, NDIS caps receive indications at 10 NET_BUFFER_LISTs per DPC. 0xFFFFFFFF removes the cap. It does not lower ping.'
         Risk     = 'Low'
-        Evidence = 'Documented (Microsoft KB 2483177, NetworkThrottlingIndex)'
+        Evidence = 'Documented (NDIS Receive Side Throttle; retired KB 948066)'
         Reboot   = $true
         Reg      = @(
             @{ Path = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'; Name = 'NetworkThrottlingIndex'; Type = 'DWord'; Value = 0xFFFFFFFF }
@@ -197,7 +221,7 @@ $Tweaks = @(
         Id       = 'latency.mmcss-games'
         Category = 'latency'
         Title    = 'Raise the MMCSS scheduling category for the Games task'
-        Why      = 'Games that register with MMCSS get scheduled in the High category instead of the default Medium. This is the only value in the Games task that does anything: GPU Priority and SFIO Priority are absent from mmcss.sys entirely, and Priority is ignored whenever Scheduling Category is High.'
+        Why      = 'Games that register with MMCSS get scheduled in the High category instead of the default Medium. GPU Priority and SFIO Priority are absent from mmcss.sys entirely; under High the boosted priority is fixed at 24, so Priority only sets the exhausted level.'
         Risk     = 'Low'
         Evidence = 'Documented (MMCSS task profiles), confirmed against mmcss.sys'
         Reboot   = $true
@@ -259,9 +283,9 @@ $Tweaks = @(
         Id       = 'net.adapter-powersave-off'
         Category = 'net'
         Title    = 'Stop Windows powering down network adapters'
-        Why      = 'Clears "Allow the computer to turn off this device to save power" on every physical NIC. Prevents link renegotiation stalls mid-session.'
+        Why      = 'Clears "Allow the computer to turn off this device to save power" on every physical NIC. Prevents link renegotiation stalls after idle or sleep.'
         Risk     = 'Low'
-        Evidence = 'Documented (Disable-NetAdapterPowerManagement)'
+        Evidence = 'Documented (Set-NetAdapterPowerManagement -AllowComputerToTurnOffDevice)'
         Reboot   = $false
         Capture  = {
             $out = @()
@@ -273,15 +297,17 @@ $Tweaks = @(
         }
         Set      = {
             foreach ($a in (Get-PhysicalAdapter)) {
-                Disable-NetAdapterPowerManagement -Name $a.Name -NoRestart -ErrorAction SilentlyContinue
+                # Only this one property. Disable-NetAdapterPowerManagement with no
+                # switches would also turn off Wake-on-LAN, ARP/NS offload and the rest.
+                Set-NetAdapterPowerManagement -Name $a.Name -AllowComputerToTurnOffDevice Disabled -NoRestart -ErrorAction SilentlyContinue
             }
             Restart-NetAdapterSafely
         }
         Undo     = {
             param($state)
             foreach ($a in $state.Adapters) {
-                if ($a.AllowComputerToTurnOffDevice -eq 'Enabled') {
-                    Enable-NetAdapterPowerManagement -Name $a.Name -NoRestart -ErrorAction SilentlyContinue
+                if ($a.AllowComputerToTurnOffDevice -in 'Enabled', 'Disabled') {
+                    Set-NetAdapterPowerManagement -Name $a.Name -AllowComputerToTurnOffDevice $a.AllowComputerToTurnOffDevice -NoRestart -ErrorAction SilentlyContinue
                 }
             }
             Restart-NetAdapterSafely
@@ -357,11 +383,12 @@ $Tweaks = @(
         Id       = 'privacy.activity-history'
         Category = 'privacy'
         Title    = 'Stop collecting and uploading activity history'
-        Why      = 'Timeline data stops being written locally and stops being sent to the Microsoft account.'
+        Why      = 'Timeline data stops being written locally. Cross-device sync is already discontinued in Windows versions released since January 2024.'
         Risk     = 'Low'
-        Evidence = 'Documented (PublishUserActivities / UploadUserActivities)'
+        Evidence = 'Documented (EnableActivityFeed / PublishUserActivities / UploadUserActivities)'
         Reboot   = $true
         Reg      = @(
+            @{ Path = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System'; Name = 'EnableActivityFeed'; Type = 'DWord'; Value = 0 }
             @{ Path = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System'; Name = 'PublishUserActivities'; Type = 'DWord'; Value = 0 }
             @{ Path = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System'; Name = 'UploadUserActivities'; Type = 'DWord'; Value = 0 }
         )
@@ -371,7 +398,7 @@ $Tweaks = @(
         Id       = 'privacy.consumer-features'
         Category = 'privacy'
         Title    = 'Block silently installed suggested apps'
-        Why      = 'Stops Windows pulling promoted apps and Start menu suggestions onto a fresh install. Removes a background download and a set of scheduled tasks.'
+        Why      = 'Stops Windows pulling promoted third-party apps onto a fresh install. Removes a background download and a set of scheduled tasks.'
         Risk     = 'Low'
         Evidence = 'Documented (CloudContent policy)'
         Reboot   = $false
@@ -385,7 +412,7 @@ $Tweaks = @(
         Id       = 'privacy.services-telemetry'
         Category = 'privacy'
         Title    = 'Disable the DiagTrack and dmwappushservice services'
-        Why      = 'These are the transports that actually ship diagnostic data. Disabling them is the enforcement behind privacy.telemetry.'
+        Why      = 'DiagTrack is the documented transport for diagnostic data. dmwappushservice is included because it costs nothing without MDM enrolment, not because a telemetry link is established.'
         Risk     = 'Low'
         Evidence = 'Documented'
         Reboot   = $false
@@ -415,7 +442,7 @@ $Tweaks = @(
         Id       = 'nvidia.msi-mode'
         Category = 'nvidia'
         Title    = 'Enable Message Signalled Interrupts for the GPU'
-        Why      = 'Line-based interrupts are shared and serialised; MSI lets the GPU raise its own vector. One of the few interrupt tweaks with a reproducible DPC latency improvement.'
+        Why      = 'Line-based interrupts are shared and serialised; MSI lets the GPU raise its own vector. On systems still using line-based interrupts this may reduce interrupt/DPC overhead; RTX 30/40 drivers already enable it.'
         Risk     = 'Medium'
         Evidence = 'Documented (PCI MSISupported). Rare hardware refuses to boot with MSI on: revert from Safe Mode if the display fails.'
         Reboot   = $true
@@ -517,6 +544,17 @@ function Request-Elevation([string]$ScriptPath, $BoundParameters) {
     Start-Process -FilePath $exe -ArgumentList $arguments -Verb RunAs
 }
 
+# Captured state is a hashtable within the session that captured it and a
+# PSCustomObject once read back from the JSON backup. Older backups also lack
+# fields added since, which strict mode would turn into an error on access.
+function Get-StateValue($State, [string]$Name) {
+    if ($null -eq $State) { return $null }
+    if ($State -is [System.Collections.IDictionary]) { return $State[$Name] }
+    $prop = $State.PSObject.Properties[$Name]
+    if ($prop) { return $prop.Value }
+    $null
+}
+
 function Get-RegValue([string]$Path, [string]$Name) {
     if (-not (Test-Path $Path)) { return $null }
     $item = Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue
@@ -539,12 +577,50 @@ function Restore-RegValue([string]$Path, [string]$Name, [string]$Type, $Previous
     }
 }
 
-function Get-PowerSettingIndex([string]$Subgroup, [string]$Setting) {
-    $out = powercfg /query SCHEME_CURRENT $Subgroup $Setting 2>$null
+function Get-ActiveSchemeGuid {
+    $line = [string](powercfg /getactivescheme)
+    if ($line -match '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})') { return $Matches[1] }
+    $null
+}
+
+function Get-PowerSettingIndex([string]$Subgroup, [string]$Setting, [string]$Scheme = 'SCHEME_CURRENT', [ValidateSet('AC', 'DC')][string]$Source = 'AC') {
+    $out = powercfg /query $Scheme $Subgroup $Setting 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $out) { return $null }
-    $line = $out | Select-String 'Current AC Power Setting Index:\s*(0x[0-9a-f]+)'
+    $line = $out | Select-String "Current $Source Power Setting Index:\s*(0x[0-9a-f]+)"
     if (-not $line) { return $null }
     [Convert]::ToInt32($line.Matches[0].Groups[1].Value, 16)
+}
+
+# AC and DC are captured separately, against the scheme by GUID rather than
+# SCHEME_CURRENT: Set-PowerSettingIndex writes both, and a revert that runs after
+# the active plan changed (power.ultimate reverting first, say) must still write
+# into the plan the values were read from.
+function Get-PowerSettingState([string]$Subgroup, [string]$Setting) {
+    $scheme = Get-ActiveSchemeGuid
+    @{
+        Scheme = $scheme
+        AC     = (Get-PowerSettingIndex $Subgroup $Setting $scheme 'AC')
+        DC     = (Get-PowerSettingIndex $Subgroup $Setting $scheme 'DC')
+    }
+}
+
+function Restore-PowerSettingState([string]$Subgroup, [string]$Setting, $State) {
+    # Backups written before AC/DC were split carry a single AC value as Previous.
+    $previous = Get-StateValue $State 'Previous'
+    if ($null -ne $previous) {
+        Set-PowerSettingIndex $Subgroup $Setting $previous
+        return
+    }
+    $scheme = Get-StateValue $State 'Scheme'
+    if (-not $scheme) { $scheme = 'SCHEME_CURRENT' }
+    $ac = Get-StateValue $State 'AC'
+    $dc = Get-StateValue $State 'DC'
+    if ($null -ne $ac) { powercfg /setacvalueindex $scheme $Subgroup $Setting $ac | Out-Null }
+    if ($null -ne $dc) { powercfg /setdcvalueindex $scheme $Subgroup $Setting $dc | Out-Null }
+    # A changed index only takes effect on the active scheme once it is re-applied.
+    if ($scheme -eq 'SCHEME_CURRENT' -or $scheme -eq (Get-ActiveSchemeGuid)) {
+        powercfg /setactive SCHEME_CURRENT | Out-Null
+    }
 }
 
 function Set-PowerSettingIndex([string]$Subgroup, [string]$Setting, [int]$Index) {
@@ -616,7 +692,10 @@ function Get-ServiceState([string[]]$Names) {
         $svc = Get-Service -Name $n -ErrorAction SilentlyContinue
         if ($svc) {
             $start = (Get-CimInstance Win32_Service -Filter "Name='$n'" -ErrorAction SilentlyContinue).StartMode
-            @{ Name = $n; StartMode = [string]$start; Status = [string]$svc.Status }
+            # Win32_Service reports Automatic (Delayed Start) as plain 'Auto'; the
+            # delayed flag lives only in the service key.
+            $delayed = Get-RegValue "HKLM:\SYSTEM\CurrentControlSet\Services\$n" 'DelayedAutoStart'
+            @{ Name = $n; StartMode = [string]$start; DelayedAutoStart = ($delayed -eq 1); Status = [string]$svc.Status }
         }
     }
 }
@@ -639,6 +718,10 @@ function Restore-ServiceState($Saved) {
             default   { 'Manual' }
         }
         Set-Service -Name $s.Name -StartupType $type -ErrorAction SilentlyContinue
+        # Set-Service has no delayed-start type on Windows PowerShell 5.1.
+        if ($type -eq 'Automatic' -and (Get-StateValue $s 'DelayedAutoStart')) {
+            sc.exe config $s.Name start= delayed-auto | Out-Null
+        }
         if ($s.Status -eq 'Running' -and $type -ne 'Disabled') {
             Start-Service -Name $s.Name -ErrorAction SilentlyContinue
         }
@@ -772,14 +855,37 @@ function Invoke-TweakRevert($Tweak, $Backup) {
 }
 
 function New-RestorePointSafely {
+    # Checkpoint-Computer exists only in Windows PowerShell 5.1, and Tweaks.cmd
+    # prefers pwsh when it is installed, so the call always goes through
+    # powershell.exe. System Protection is not switched on here: if it is off, the
+    # call fails and the warning below says so.
+    #
+    # When a restore point already exists from the last 24 hours, Windows skips the
+    # new one and Checkpoint-Computer only writes a warning. That is reported as
+    # "not created" rather than as success.
+    $inner = @'
+$w = $null
+try {
+    Checkpoint-Computer -Description 'Before Windows Tweaks' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop -WarningAction SilentlyContinue -WarningVariable w
+}
+catch { [Console]::Out.WriteLine($_.Exception.Message); exit 1 }
+if ($w) { [Console]::Out.WriteLine([string]$w[0]); exit 2 }
+exit 0
+'@
+    # stdout only: under 5.1, redirecting a native command's stderr while
+    # ErrorActionPreference is Stop turns its first line into a terminating error.
+    $ps51 = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
     try {
-        Enable-ComputerRestore -Drive "$env:SystemDrive\" -ErrorAction Stop
-        Checkpoint-Computer -Description 'Before Windows Tweaks' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop
-        Write-Host 'Restore point created.' -ForegroundColor Green
+        if (-not (Test-Path $ps51)) { throw 'Windows PowerShell 5.1 (powershell.exe) was not found.' }
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($inner))
+        $message = (& $ps51 -NoProfile -NonInteractive -EncodedCommand $encoded | Out-String).Trim()
+        switch ($LASTEXITCODE) {
+            0       { Write-Host 'Restore point created.' -ForegroundColor Green }
+            2       { throw "Windows skipped it (one restore point per 24 hours). $message" }
+            default { throw $message }
+        }
     }
     catch {
-        # Windows rate-limits restore points to one per 24h, and System Protection is
-        # off by default on many installs. Neither is a reason to abort.
         Write-Warning "Could not create a restore point: $($_.Exception.Message)"
         Write-Warning 'The per-tweak backup file is still written. Continuing.'
     }

@@ -38,7 +38,7 @@ The script writes these only to adapters that are currently **Up**, and captures
 whatever was there first.
 
 :::caution[The commonly published value is wrong]
-Most guides write `TcpAckFrequency = 0`. Microsoft documents `0` as not valid and
+Some guides write `TcpAckFrequency = 0`. Microsoft documents `0` as not valid and
 treated as the default of `2`, producing default behaviour that looks like a change.
 The value is a count of outstanding ACKs before the delayed-ACK timer is ignored; `1`
 acknowledges every segment.
@@ -57,12 +57,16 @@ TCP-based games and TCP application traffic.
 <TweakMeta risk="Low" evidence="Documented" reboot={false} />
 
 Clears **Allow the computer to turn off this device to save power** on every
-physical NIC. When Windows powers a NIC down and back up, the link renegotiates:
-a one to three second network stall in the middle of whatever was running.
+physical NIC. When Windows powers a NIC down (after idle or across sleep) and back
+up, the link renegotiates: a one to three second network stall.
 
 ```powershell
-Disable-NetAdapterPowerManagement -Name '*'
+Set-NetAdapterPowerManagement -Name '*' -AllowComputerToTurnOffDevice Disabled
 ```
+
+Only that one property changes. `Disable-NetAdapterPowerManagement` without
+switches is broader than it looks: it also turns off Wake-on-LAN, ARP/NS offload,
+packet coalescing and selective suspend.
 
 The script bounces the adapter afterwards so the change applies without a reboot, and
 skips the bounce if it detects an RDP session.
@@ -114,7 +118,7 @@ skips adapters that do not advertise it. Intel drivers name the EEE switch
 
 The WDK standardised default for `*EEE` is enabled, but captured Intel INF files show
 both `*EEE` and `AdvancedEEE` shipping with a default of `0` on some drivers, so
-"disable EEE" is a no-op on a meaningful share of adapters. A value written into a key
+"disable EEE" is a no-op on some drivers. A value written into a key
 that does not advertise the keyword is rejected.
 
 :::caution[The circulating value is inverted]
@@ -173,8 +177,8 @@ Two where the blanket advice is inverted:
   and differs per adapter — observed defaults span 256 to 2048 on Intel parts alone.
   Out-of-range writes are *rejected*, not clamped, so a script setting a fixed number
   silently does nothing on many machines.
-- **Jumbo frames.** Every device on the path must agree on the frame size, which on a
-  home network means it will not work. Intel warns against dropping RX/TX buffers
+- **Jumbo frames.** Every device on the path must agree on the frame size, which a
+  typical home network does not guarantee. Intel warns against dropping RX/TX buffers
   below 256 with jumbo enabled — that combination loses the link.
 
 Values that are wrong rather than merely unnecessary (`*RSS = 0`, buffers set to `0`,

@@ -124,7 +124,7 @@ hardware.
 
 None of these is in `bloat.services`: each depends on hardware that may not be present
 or a feature that may not be in use. All are marked `OK to disable` in Microsoft's
-table and all are free on a machine that does not use them.
+table, and all are free on a machine that does not use them.
 
 Set them to **Manual** first. A Manual service that nothing requests never starts, and
 it can be restored without a reboot.
@@ -136,12 +136,12 @@ it can be restored without a reboot.
 | `WalletService`, `SEMgrSvc` | Wallet, Payments and NFC | Tap-to-pay. On a desktop with no NFC hardware, nothing. |
 | `PhoneSvc`, `SmsRouter` | Phone Service, SMS Router | Phone Link calls and text messages. |
 | `icssvc` | Windows Mobile Hotspot | Sharing the connection with other devices. |
-| `SharedAccess` | Internet Connection Sharing | The same thing by the older mechanism. Also a documented attack surface. |
-| `WebClient` | WebClient | WebDAV drive mapping. Remotely reachable, with a vulnerability history. |
-| `ScardSvr` | Smart Card | Smart-card logon. Corporate laptops only. |
+| `SharedAccess` | Internet Connection Sharing | The same thing by the older mechanism, plus NAT for Hyper-V's Default Switch and DNS for WSL2's NAT mode. Also a documented attack surface. |
+| `WebClient` | WebClient | WebDAV drive mapping. Abused to coerce NTLM authentication for relay attacks, with a vulnerability history. |
+| `SCardSvr` | Smart Card | Smart-card logon. Corporate laptops only. |
 | `WMPNetworkSvc` | Windows Media Player Network Sharing | UPnP/DLNA sharing from Windows Media Player. WMP Legacy still ships as an optional feature. |
 | `wisvc` | Windows Insider Service | Insider builds. No performance change either way. |
-| `PcaSvc` | Program Compatibility Assistant | Install-failure prompts and shim application. Feeds the application-compatibility telemetry pipeline, so a privacy decision as much as a performance one. |
+| `PcaSvc` | Program Compatibility Assistant | Install-failure prompts and compatibility-mode suggestions. Feeds the application-compatibility telemetry pipeline, so a privacy decision as much as a performance one. |
 
 **`RasMan`** reads as dial-up and Microsoft marks it `OK to disable`, but the built-in
 VPN client and several third-party VPN clients depend on it.
@@ -153,8 +153,9 @@ Two of these have a lighter option than disabling the service:
   `bthserv` plus the whole `BthA2dp`/`BthEnum`/`BthLEEnum`/`BTHPORT`/`BTHUSB`/
   `RFCOMM` driver stack and the per-user `BluetoothUserService`.
 - **ICS and Mobile Hotspot.** ICS only does anything when the machine has two or
-  more network connections, so on a single-NIC desktop the service is already
-  inert. `NC_ShowSharedAccessUI` under
+  more network connections. Hyper-V's Default Switch counts: Microsoft documents ICS
+  as enabled on it, and WSL2's NAT mode routes DNS through `SharedAccess`. On a
+  single-NIC desktop without either, the service is inert. `NC_ShowSharedAccessUI` under
   `HKLM\SOFTWARE\Policies\Microsoft\Windows\Network Connections` removes the
   Sharing tab without touching `icssvc`, `SharedAccess` or `ALG`.
 
@@ -165,7 +166,7 @@ Two of these have a lighter option than disabling the service:
 | `BFE` + `mpssvc` | Firewall rules stop applying, along with Xbox Live networking, ICS and Defender's network inspection. Restoring means bringing the dependants back in order. |
 | `appinfo` | UAC elevation fails. Nothing requiring administrator rights starts. |
 | `AppXSvc` | Store-packaged apps stop working, including third-party ones that ship that way, such as PowerToys' CmdPal launcher. (Disabling `ShellHWDetection` for Autoplay has a related symptom: CmdPal stops starting at boot.) |
-| `pla`, `PerfHost`, `wmiApSrv` | Performance counter collection and data collector sets stop working, so perfmon shows nothing. WPR still records — it is an ETW consumer, not a counter consumer. |
+| `pla`, `PerfHost`, `wmiApSrv` | Scheduled counter logs and data collector sets stop working. WPR still records — it is an ETW consumer, not a counter consumer. |
 | `WlanSvc` | No Wi-Fi. |
 | `CapabilityAccessManagerSvc` | Camera and microphone permission handling. Apps are denied with no prompt. |
 | Xbox services | Game Pass, cloud saves and the Xbox overlay. Microsoft's IoT table marks these **Should be disabled**, which is kiosk guidance and inverted for a gaming desktop. |
@@ -183,7 +184,7 @@ Each row is reasonable on a specific machine and wrong as a general recommendati
 | Geolocation Service | Anything is location-aware, including automatic time zone. |
 | Parental Controls | Family Safety is set up on the machine. |
 | Radio Management Service | The machine has Wi-Fi or Bluetooth to put into airplane mode. |
-| Program Compatibility Assistant | Rarely needed on current software, and nearly free to leave running. |
+| Program Compatibility Assistant | You want Windows' install and compatibility prompts for older installers or games. |
 
 None is in the script. Disable by hand where the row applies:
 
@@ -198,7 +199,8 @@ Set-Service -Name PcaSvc -StartupType Disabled  # Program Compatibility Assistan
 
 The "hide all Microsoft services" checkbox does not distinguish between a vendor's
 telemetry uploader and the driver service a GPU, audio interface or anti-cheat needs.
-`msconfig` also keeps no record of what it changed.
+`msconfig` records only the current disabled set, under
+`HKLM\SOFTWARE\Microsoft\Shared Tools\MSConfig`, with no history of earlier changes.
 
 Use **Autoruns** from Sysinternals to audit what starts with the machine. It shows the
 publisher, signature status and exact registry key or task, and individual entries can

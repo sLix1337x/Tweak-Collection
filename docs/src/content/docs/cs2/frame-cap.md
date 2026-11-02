@@ -10,12 +10,13 @@ tags:
 ---
 
 The relevant choice is the cap *mechanism*, not the cap *value*. At an identical frame
-rate, the choice of limiter moves 1 % and 0.1 % lows by 10–30 FPS.
+rate, the choice of limiter moved 1 % and 0.1 % lows by 10–30 FPS in the one published
+comparison.
 
 ## The measurements
 
-CapFrameX comparison at a 120 FPS cap, recording averages, percentile lows and PC
-latency simultaneously:
+CapFrameX comparison in Cyberpunk 2077 (one published test, not CS2) at a 120 FPS cap,
+recording averages, percentile lows and PC latency simultaneously:
 
 | Limiter | Avg | 1 % low | 0.1 % low | Avg PC latency | Character |
 | --- | --- | --- | --- | --- | --- |
@@ -23,13 +24,13 @@ latency simultaneously:
 | In-game limiter | 120 | 102.7 | 89.1 | 20.0 ms | Low latency, good lows |
 | Driver "Max Frame Rate" | 120 | 92.3 | 77.4 | 19.0 ms | Low latency, worst lows |
 | Reflex + V-Sync/G-Sync | 116.1 | 88.4 | 74.7 | 17.6 ms | Lowest latency, weak lows |
-| **RTSS (Async)** | 120 | **101.8** | **90.1** | 20.1 ms | Best lows-to-latency balance |
-| Special K (Normal) | 120 | **105.9** | **90.2** | 21.1 ms | Best pacing, slight latency cost |
+| RTSS (Async) | 120 | 101.8 | 90.1 | 20.1 ms | In-game latency, slightly better 0.1 % low |
+| Special K (Normal) | 120 | 105.9 | 90.2 | 21.1 ms | Best non-V-Sync pacing, slight latency cost |
 
-Every row delivers 120 FPS average; the spread in the worst 1 % of frames is larger
-than most other tweaks produce. This matches display-research guidance: in-game
-limiters run half a frame to a frame lower in latency than external ones, while RTSS
-delivers the flattest frame times.
+Every row but Reflex (116.1) holds the 120 FPS average; the spread in the worst 1 % of
+frames is larger than most other tweaks produce. In this test the in-game limiter and
+RTSS were within 0.1 ms of each other, and Special K and V-Sync paced more evenly than
+RTSS.
 
 Independent of limiter choice: **any consistent cap the machine can hold beats running
 uncapped into GPU saturation** — a saturated pipeline queues frames, and queued frames
@@ -39,9 +40,9 @@ are latency.
 
 | Situation | Use | Why |
 | --- | --- | --- |
-| **MM / Premier** | RTSS in Async mode | Best lows-to-latency balance. |
+| **MM / Premier** | RTSS in Async mode | Latency and 1 % low level with the in-game limiter, slightly more even 0.1 % low, and no `fps_max` caveat when the cap is hit. |
 | **FACEIT** | Driver Max Frame Rate + Low Latency Mode Ultra | RTSS is blocked by the anti-cheat; worse pacing is the cost of playing. |
-| **Either, without external tools** | `fps_max` | Better lows than the driver limiter, with the caveat below. |
+| **Either, without external tools** | `fps_max` | Avoids external tools; see the caveat below. |
 
 `fps_max` produces inconsistent frame times **when the cap is actually being hit**,
 because the engine-side limiter rations frame start times coarsely. Set below the
@@ -84,9 +85,9 @@ to 150, so tune it with TestUFO at the frame rates actually reached.
 ## Reflex
 
 Reflex helps when the **GPU** is the bottleneck and the render queue is full. On a
-CPU-bound CS2 machine the queue is already empty, so there is nothing to drain and it
-can only add overhead — a ~0.3 ms per-frame static cost, invisible at 144 FPS and
-measurable at 360+. Some high-frame-rate players run `-noreflex` with an external cap
+CPU-bound CS2 machine the queue is already empty, so there is little to drain, while
+the static cost remains: ~0.3 ms per frame, invisible at 144 FPS and measurable at
+360+. Some high-frame-rate players run `-noreflex` with an external cap
 and report steadier captures.
 
 The measured frame-rate side, from the per-setting sweep: Reflex On cost 2.6 % of
