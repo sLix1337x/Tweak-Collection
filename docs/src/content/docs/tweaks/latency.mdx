@@ -10,7 +10,7 @@ tags:
 
 import TweakMeta from '../../../components/TweakMeta.astro';
 
-Four values, all documented and verified present in the driver that reads them.
+Four tweaks, all documented; the MMCSS values are verified present in the driver that reads them.
 Quantum lengths, input queue sizes and timer tricks are on the
 [debunked page](../../reference/debunked/).
 
@@ -37,7 +37,8 @@ HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR\AllowGameDVR = 0
 The HKCU half is per-user — apply it from each account. The `HKLM` policy value
 covers the machine regardless.
 
-The Game Bar settings API reads a separate per-user switch. The full capture key also
+The Game Bar settings API reads a separate per-user switch, which the script does
+not write; set it by hand if wanted. The full capture key also
 holds bitrate, resolution and framerate modes, historical buffer length, mic and
 system gain, and hotkey virtual-key codes:
 
@@ -60,9 +61,10 @@ performance counters and audio mixing.
 which decides whether **Game Mode** registers. `AllowGameDVR = 0` does not touch it,
 so Game Mode is unaffected by this tweak.
 
-Game Mode itself suppresses the `Win32PrioritySeparation` foreground boost, pulls
-games out of `REALTIME_PRIORITY_CLASS` down to `NORMAL`, and its power-profile switch
-does nothing when the active scheme is already High Performance. Treat it as a
+Game Mode itself suppressed the `Win32PrioritySeparation` foreground boost on 23H2
+(not on 25H2), pulls games out of `REALTIME_PRIORITY_CLASS` down to `NORMAL`, and skips
+its power-profile switch only when the active scheme is the stock High Performance
+GUID, not a copy and not Ultimate. Treat it as a
 variable to A/B when investigating a frame-time problem.
 :::
 

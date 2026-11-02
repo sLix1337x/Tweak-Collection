@@ -50,7 +50,7 @@ unstable is worth re-testing with Memory Context Restore off as well.
 Reports run both directions on this setting, and the crashes attributed to it turn up
 after hours of uptime rather than in a benchmark run. Validate it the way a
 [Curve Optimizer offset](../am4/#pbo-and-curve-optimizer) is validated — leave the
-machine up and used, not stress tested.
+machine up through long idle and light use; a stress pass alone does not catch it.
 :::
 
 ### Memory encryption: TSME
@@ -61,12 +61,12 @@ Secure Processor generates at each reset and never exposes to software. *Transpa
 the part that matters: firmware enables it for all of memory, so no OS support is
 involved and nothing in Windows asks for it or reports it. The entry sits under **AMD
 CBS**, in *DF Common Options → Memory Addressing* or *NBIO Common Options* depending on
-vendor and AGESA, sometimes labelled *Memory Guard* or *SMEE*.
+vendor and AGESA, sometimes labelled *Memory Guard*. *SMEE* is a different setting — it enables OS-driven SME — not TSME.
 
 **Disabled** is the lower-latency setting, because the AES engine sits in the DRAM path
 and every access pays for it. The size is modest and workload-dependent: Cloudflare
-measured an EPYC fleet with TSME on and off and found STREAM bandwidth down 2.6–4.2 %
-(mean 3.7 %), with the average across all eleven data points at 0.699 %. Nobody has
+measured TSME on and off on an EPYC 7642 edge server and found STREAM bandwidth down
+2.6–4.2 % at worst (mean 3.7 %), with the average across all eleven data points at 0.699 %. Nobody has
 published a frame-time comparison, so treat it as a small real cost of unknown size in a
 game, and [measure](../../benchmark/frame-times/) if it matters whether it moved.
 
@@ -77,20 +77,19 @@ room that threat model is thin. On a laptop, or any machine that can be carried 
 data on it, a fraction of a percent is the wrong thing to trade for it.
 
 :::caution[The menu is not evidence that it is on]
-AGESA 1.2.7.0 (April 2026) made the boot-loader flag `DfIsTsmeEnabled` return false on
+AGESA 1.2.7.0 (BIOS releases from late 2025) made the boot-loader flag `DfIsTsmeEnabled` return false on
 non-PRO Ryzen regardless of the BIOS toggle, so consumer chips ran unencrypted while the
 firmware still offered the switch. AMD reversed the change once it was found and
-published; July 2026 firmware restores the option — ASUS from AGESA ComboAM5 PI 1.3.0.1b
-Patch A — but the rollout is per vendor and per board. For most of 2026, "disable TSME"
+published; firmware from June–July 2026 restores the option — ASUS from AGESA ComboAM5 PI
+1.3.0.1b Patch A, in betas from June — but the rollout is per vendor and per board. For most of 2026, "disable TSME"
 on a consumer part was setting something that was already off.
 :::
 
-Read the state rather than the menu. `MSR_AMD64_SYSCFG` (`0xC0010010`) bit 23,
-`MemEncryptionModeEn`, is 1 when the controller is encrypting. Under Linux that is
-`rdmsr -f 23:23 0xC0010010`, or the `sme` flag in `/proc/cpuinfo`, which the kernel
-clears when bit 23 is not set. TSME does **not** appear in the kernel's
-`Memory Encryption Features active:` line — that reports the OS-driven SME and SEV
-variants, and the CCP driver prints `psp: TSME enabled` separately. Windows publishes no
+Read the state rather than the menu. Under Linux, `tsme_status` under the PSP's PCI
+device (`/sys/bus/pci/devices/<BDF>/tsme_status`, kernel 5.19+) reads 1 when TSME is
+active; newer kernels also log `psp: TSME enabled`, and fwupd's HSI report shows it as
+*Encrypted RAM*. `MSR_AMD64_SYSCFG` (`0xC0010010`) bit 23 and the `sme` flag in
+`/proc/cpuinfo` are the SME enable (SMEE), not a TSME readout. Windows publishes no
 equivalent readout at all.
 
 Tuning beyond the profile is socket-specific and lives on its own page: the fabric is the
@@ -157,8 +156,8 @@ disabled where it counts — confirm the live state in GPU-Z, not the firmware m
 
 The gain is not universal: on a PCIe 3.0 link with an Ampere card, controlled testing
 measured repeatable *regressions* in some titles (−2.5 % to −3.4 % in one, 0.1 % lows
-nearly halved in a DX12 title) alongside gains up to ~12 % in others. CS2 prefers it
-[off](../../../cs2/system/#the-composition-and-gpu-layer).
+nearly halved in a DX12 title) alongside gains up to ~12 % in others. CS2 may prefer it
+[off](../../../cs2/system/#the-composition-and-gpu-layer); benchmark it.
 
 ### Disable devices that are genuinely absent
 

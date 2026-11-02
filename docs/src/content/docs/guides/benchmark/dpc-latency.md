@@ -34,7 +34,7 @@ times. A machine that is paging does not have a DPC problem to solve yet.
 | `ndis.sys`, `e1d68x64.sys`, `rt640x64.sys` | Network stack or NIC driver. Try the [network tweaks](../../../tweaks/network/). |
 | `storport.sys`, `storahci.sys`, `stornvme.sys` | Storage. Often PCIe ASPM; see [`power.pcie-aspm-off`](../../../tweaks/power/#power.pcie-aspm-off). |
 | `nvlddmkm.sys` | NVIDIA display driver. Try [`nvidia.msi-mode`](../../../tweaks/nvidia/#nvidia.msi-mode), or a different driver branch. |
-| `ACPI.sys`, `intelppm.sys` | CPU power management. Try the Ultimate Performance plan and check C-state settings in BIOS. |
+| `ACPI.sys`, `intelppm.sys` | CPU power management, usually idle-state exits. The Ultimate Performance plan only unparks cores and does not disable idle states; change the power plan's idle settings, or C-states in BIOS, and measure. |
 | `Wdf01000.sys` | The Kernel-Mode Driver Framework runtime, shared by many drivers, so the cause is a KMDF driver rather than this file. Usually a peripheral. Unplug devices one at a time. |
 | `dxgkrnl.sys` | Graphics kernel. Often a symptom of the display driver rather than the cause. |
 

@@ -67,40 +67,45 @@ step, not a starting point.
 The inverse experiment has also been run: the "full 1:1:1 sync" configuration
 circulating as an esports sleeper tip — DDR5-4400 with FCLK = UCLK = MCLK 2200 — was
 bench-tested on a 9800X3D in 2026 and produced **no general gaming benefit**; the
-bandwidth sacrificed costs more than the synchronization returns. It also trains
-poorly, because AGESA was never optimized for timings that low. Skip it.
+bandwidth sacrificed costs more than the synchronisation returns. It also trains
+poorly, because AGESA was never optimised for timings that low. Skip it.
 
 ## Firmware: the 2025–2026 AGESA line
 
-AM5 firmware moved significantly through 2025–2026, and two items on it are tuning
-features rather than fixes.
+AM5 firmware moved significantly through 2025–2026. Two items on it are not plain
+fixes: one is a tuning feature, one a security default with a performance cost.
 
 | AGESA | Arrived | Content |
 | --- | --- | --- |
-| 1.2.0.3f / 1.2.0.3g | late 2025 – early 2026 | Memory compatibility and voltage-regulation refinements. |
-| 1.2.7.0 | October 2025 | PSP firmware update, next-generation CPU enablement. Carried the TSME regression covered on [worth changing](../worth-changing/). |
-| 1.3.0.0 / 1.3.0.0a | February 2026 | Fixes a Ryzen 9000 no-boot class, loads EXPO timings correctly and completely again, and adds **Fine Granularity Refresh** (below). |
-| 1.3.0.1b | June 2026 | Adds **EXPO Ultra Low Latency** profile support, across 600- and 800-series boards; restores the TSME toggle (Patch A). |
+| 1.2.0.3f / 1.2.0.3g | 2025 | Memory compatibility and voltage-regulation refinements. |
+| 1.2.7.0 | late 2025 (MSI and ASUS from October–November) | PSP firmware update, next-generation CPU enablement. Carried the TSME regression covered on [worth changing](../worth-changing/). |
+| 1.2.8.0 | late 2025 (MSI from December) | ASUS builds set the refresh mode's Auto to Mixed (below). |
+| 1.3.0.0 / 1.3.0.0a | February 2026 | Fixes a Ryzen 9000 no-boot class and loads EXPO timings correctly and completely again. |
+| 1.3.0.1b | June–July 2026 | Adds **EXPO Ultra Low Latency** profile support, across 600- and 800-series boards; restores the TSME toggle (Patch A — ASUS betas from June, AMD's timeline July). |
 
 ### Fine Granularity Refresh (FGR)
 
-Standard refresh stalls all banks at once; FGR refreshes one bank at a time, so the
-rest stay available for requests. Its arrival on AM5 gives **tRFC2 and tRFCsb a
-function for the first time** — previously inert values. Board defaults ship it
-disabled; measured configurations use **Mixed**, which lets the controller switch
-between per-bank and all-bank refresh as load demands.
+Standard refresh stalls all banks for tRFC1 every tREFI. FGR mode issues all-bank
+refreshes at half the interval with the shorter tRFC2, and enables same-bank refresh
+(tRFCsb), which leaves the other banks available for requests. Its arrival on AM5 gives
+**tRFC2 and tRFCsb a function for the first time** — previously inert values. Older
+board defaults ship it disabled, but ASUS (from AGESA 1.2.8.0) and ASRock (with
+1.3.0.0a) moved Auto to **Mixed**, the Rowhammer mitigation in AMD-SB-7048, which lets
+the controller switch between same-bank and all-bank refresh as load demands. **Normal**
+is the faster setting; Mixed trades some memory performance for Rowhammer resistance.
 
-The catch: FGR only works correctly when the kit's SPD stores valid tRFC2/tRFCpb
+The catch: FGR only works correctly when the kit's SPD stores valid tRFC2/tRFCsb
 values, which cheap kits may not. Tune tRFC2 analogous to tRFC and tRFCsb at a
 13/16 factor of tRFC2 as a starting point.
 
 ### EXPO Ultra Low Latency (ULL)
 
 An extension to EXPO profiles shipping with 1.3.0.1b — tighter pre-baked latency
-profiles per speed class, applied like any EXPO profile. Vendor material cites up to
-**13 %** gaming gains; treat that as a marketing ceiling until independent captures
-exist, and treat "EXPO support may vary by DRAM module" in the changelogs literally —
-the kit needs a ULL-aware profile. Worth an A/B on any board that received it.
+profiles per speed class, applied like any EXPO profile. AMD's **13 %** gaming figure
+is measured against JEDEC DDR5-5600; against standard EXPO DDR5-6000 AMD itself cites
+about 4 %, and independent tests have measured less. Treat "EXPO support may vary by
+DRAM module" in the changelogs literally — the kit needs a ULL-aware profile. Worth an
+A/B on any board that received it.
 
 ## SoC voltage, and the 1.3 V cap
 
@@ -131,8 +136,9 @@ cases, including repeat failures after CPU replacement — concentrated on ASRoc
 boards. ASRock's early response attributed most cases to memory-compatibility boot
 failures (BIOS 3.20, February 2025); AMD's August 2025 response attributed the failures
 to board vendors not following its voltage guidelines, and ASRock shipped BIOS 3.40
-(AGESA update) to "enhance CPU operating stability". Reports continued into late 2025
-and ASRock opened a further investigation in February 2026. On an ASRock AM5 board,
+(AGESA update) to "enhance CPU operating stability". Reports continued into 2026,
+including on BIOS 4.10 (AGESA 1.3.0.0a). ASUS separately opened an internal review in
+January 2026 after failures on its own 800-series boards. On an ASRock AM5 board,
 running the latest BIOS is not optional; repeated CPU deaths on the same board are
 grounds for replacing the board, not the CPU.
 :::
@@ -154,28 +160,32 @@ where the result is.
 
 **A boost override of +200 MHz with PBO enabled is the whole overclock for most gaming
 machines.** PBO is dynamic, so the override only permits a higher clock when the workload
-asks for one — and games mostly do not ask. A 9800X3D averages around 5.4 GHz in a game
-whatever the ceiling is set to.
+asks for one — and games mostly do not ask. A 9800X3D sits near its 5.2 GHz stock boost in a
+game, and around 5.4 GHz with the +200 MHz offset — raising the ceiling further buys
+little.
 
 :::caution[Curve Optimizer instability appears at idle]
 Same as [AM4](../am4/#pbo-and-curve-optimizer): an offset that passes a render benchmark
 is not validated. Undervolt instability presents as WHEA errors and reboots at idle or
-light load, hours later. Leave the machine on and used rather than stress tested.
+light load, hours later. An all-core stress pass is not enough on its own: cycle
+single-thread load across each core (CoreCycler), then leave the machine on and used.
 :::
 
 ### X3D: what is locked, and what never was
 
 | Part | Multiplier / voltage | Curve Optimizer |
 | --- | --- | --- |
-| 5800X3D, 7800X3D | Locked. The cache sits **on top of** the compute die, and AMD locked manual control to protect it thermally. Ceiling is around 5050 MHz on a 7800X3D. | Available. Negative offsets always worked. |
+| 5800X3D | Locked. The cache sits **on top of** the compute die, and AMD locked manual control to protect it thermally. | Locked at launch, with PBO. Owners used PBO2 Tuner (reapplied every boot); some boards later exposed it via AGESA 1.2.0.8 BIOSes or MSI's Kombo Strike (−10/−20/−30 steps). |
+| 7800X3D | Locked, for the same reason. Ceiling is around 5050 MHz. | Available from launch. |
 | 9800X3D and later | Unlocked, with official overclocking support. AMD moved the cache **beneath** the cores, which fixed the heat path. | Available, plus Curve Shaper. |
 
 The "X3D chips cannot be overclocked" line is half right and gets repeated as if it were
-whole: undervolting via Curve Optimizer was never off-limits on any of them.
+whole: undervolting via Curve Optimizer is available on all of them — from launch on
+the 7800X3D and 9800X3D, and later, board-dependently, on the 5800X3D.
 
 **Large V-Cache also reduces the payoff from memory tuning.** The cache absorbs much of
 the latency being tuned. Fresh 2026 scaling data on a 9800X3D quantifies it: full manual
-RAM optimization over a good EXPO profile bought at most **~7 % in 1 % lows** (Shadow of
+RAM optimisation over a good EXPO profile bought at most **~7 % in 1 % lows** (Shadow of
 the Tomb Raider), ~3 % average / ~6 % lows with ray tracing active (Cyberpunk 2077), and
 under 5 FPS in Assetto Corsa Competizione — against double-digit gains from the same RAM
 steps on a cache-poor CPU. The gap between a good EXPO profile and hand-tuned subtimings

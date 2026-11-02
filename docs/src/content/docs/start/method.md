@@ -29,8 +29,9 @@ Windows 11 has removed, renamed and re-defaulted much of what older guides were 
 on, and the guides are not re-checked.
 
 `netsh int tcp set global chimney=disabled` targets a feature deprecated in Server
-2016, and `wmic` was dropped from Windows 11 24H2. Scripts carrying either redirect
-output to `nul` and report success.
+2016, and `wmic` is disabled by default from Windows 11 24H2 (a Feature on Demand),
+removed on upgrade to 25H2 and no longer installable since 2026. Scripts carrying
+either redirect output to `nul` and report success.
 
 Everything here is checked against a current Windows 11 install. Where a setting has a
 version cut-off, the page states it.

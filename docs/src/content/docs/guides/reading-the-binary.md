@@ -103,8 +103,9 @@ it lists values the code no longer reads and omits values the code does read.
 `GPU Priority` is documented and absent from the driver; `Priority When Yielded` is in
 the driver and documented nowhere.
 
-Per [how a tweak earns its place](../../start/method/), nothing below *Situational*
-ships, and *Binary* alone is below it.
+Per [how a tweak earns its place](../../start/method/), nothing ships without at least
+*Situational* evidence — a real effect — so *Binary* or *Mechanism* alone does not
+qualify; it needs *Measured* or *Documented* behind it.
 
 ## Where to point it
 

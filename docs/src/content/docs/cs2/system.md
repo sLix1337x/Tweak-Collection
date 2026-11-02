@@ -22,8 +22,8 @@ Measured: **~8 % average across games** on a 5800X3D in one controlled suite; **
 average, over 20 % in CPU-sensitive titles** in earlier testing. Lows are hit harder
 than averages; a faster GPU does not compensate.
 
-CPUs without hardware GMET (pre-Zen 2) fall back to software emulation and lose more.
-The older the CPU, the larger the recovery.
+CPUs without hardware GMET (AMD, pre-Zen 2) or MBEC (Intel, pre-Kaby Lake) fall back
+to software emulation and lose more. The older the CPU, the larger the recovery.
 
 Check the actual state rather than the toggle; the two frequently disagree:
 
@@ -44,12 +44,14 @@ Layer 1 — Memory Integrity only (recovers most of the loss, keeps the hypervis
 Layer 2 — the VBS layer itself
   HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard
     EnableVirtualizationBasedSecurity  = 0
-    HypervisorEnforcedCodeIntegrity    = 0
+  HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity
+    Enabled                            = 0
   bcdedit /set hypervisorlaunchtype off
   Reboot.
 ```
 
-Revert: `bcdedit /set hypervisorlaunchtype auto`.
+Revert: restore the two registry values to what they were before (delete them if they
+did not exist), then `bcdedit /set hypervisorlaunchtype auto` and reboot.
 
 Layer 2 also disables WSL2, Docker Desktop, Windows Sandbox and Hyper-V. Cumulative
 updates have been observed re-enabling Memory Integrity; re-check after each update.
@@ -146,9 +148,9 @@ and DirectStorage is a streaming API CS2 does not use.
 
 | Setting | For CS2 | Notes |
 | --- | --- | --- |
-| **MPO** | Off **only if symptomatic** | Fixes G-Sync flicker, black flashes, alt-tab stutter; otherwise no benefit and a small latency cost when an overlay appears. Requires **both** `OverlayTestMode = 5` and `OverlayMinFPS = 0` on 24H2+ — [driver guide](../../guides/nvidia-driver-install/#multiplane-overlay-in-more-detail). |
+| **MPO** | Off **only if symptomatic** | Fixes G-Sync flicker, black flashes, alt-tab stutter; otherwise no benefit and a small latency cost when an overlay appears. Requires `OverlayTestMode = 5` — [driver guide](../../guides/nvidia-driver-install/#multiplane-overlay-in-more-detail). |
 | **HAGS** | Benchmark; mild lean to off on small-VRAM cards | A 2025 test including CS2: +0.3 % average, +1.6 % 1 % lows, 0 % 0.1 % lows. The practical argument is ~1 GB of VRAM freed on an 8 GB card. Required for DLSS Frame Generation, which a 3060 does not have. |
-| **Resizable BAR** | **Benchmark it — CS2 may prefer off** | 2–4 % across a 22-game suite generally; CS2 is a documented exception, with controlled Dust2 testing finding similar averages but **~6 % better 1 % lows disabled**. Single-source. |
+| **Resizable BAR** | **Benchmark it — CS2 may prefer off** | 2–4 % across a 22-game suite generally; CS2 is a reported exception, with controlled Dust2 testing finding similar averages but **~6 % better 1 % lows disabled**. Single-source. |
 | **GSP firmware** | Default (off) | Split community testing — one tester measured a large drop in peak DPC latency with no FPS loss, another severe stutter in a DX11 title. Enabling changes the GPU UUID, forcing a shader-cache rebuild that resembles a regression. |
 | **NVIDIA Smooth Motion** | **Off** | Interpolation without motion vectors: costs base frame rate, adds latency, produces artefacts on fast motion. Not available on RTX 30. |
 | **Power management mode** | Prefer maximum performance | Removes clock-droop frame-time wobble. |
@@ -162,7 +164,7 @@ frame-time problems.
 
 Each subsection applies to a specific CPU family; skip the ones that do not match.
 
-### AMD dual-CCD X3D (7900X3D / 7950X3D / 9950X3D)
+### AMD dual-CCD X3D (7900X3D / 7950X3D / 9900X3D / 9950X3D)
 
 Games are pinned to the V-cache CCD while the frequency CCD parks — orchestrated by the
 chipset driver's game detection **plus Xbox Game Bar's "this is a game" flag**.
@@ -176,7 +178,8 @@ Detection failure wakes the wrong cores.
   8.08.12.551 is current as of August 2026.
 - **Motherboard "Gaming Mode"** — disabling the non-cache CCD outright — has been
   reported to make CS2 *worse* by starving it of threads.
-- Set CPPC to *Cached*, not a manual override.
+- CPPC set to *Cache*, together with Game Bar and Game Mode on, fixed CCD selection in
+  one reported case; try it before a manual override.
 
 Single-CCD parts (5600X through 9800X3D) do not need this section.
 
@@ -198,12 +201,12 @@ implementation is **not** BIOS-disabling SMT: use a per-process affinity rule co
 `cs2.exe` to physical cores while background work keeps the full pool. Based on
 community testing; a candidate, not a default.
 
-**Core parking. Check before changing anything.** Instrumented testing found stock
-Balanced Windows 11 parked **zero cores**, even at the most efficient power-mode
-setting, because desktop defaults hold minimum-unparked-cores at 100 %. The failure
-scenario appeared only when parking was *forced*: throughput collapsed 59 % while the
-**worst frame time went 6.5 ms → 17.3 ms** and the median barely moved. Parking is a
-tail-latency failure mode, not an average-speed tax.
+**Core parking. Check before changing anything.** One instrumented test (i9-14900F,
+Windows 11 24H2) found stock Balanced parked **zero cores**, even at the most efficient
+power-mode setting. The failure appeared only when parking was *forced*: 7-Zip
+throughput fell 59 %, and in the frame-time run the **worst frame went 6.5 ms → 17.3 ms**
+while the median barely moved. For games, parking is a tail-latency failure mode, not
+an average-FPS tax.
 
 Check Resource Monitor's CPU tab at idle for cores marked *Parked*, or
 `powercfg /qh scheme_current sub_processor` and read `CPMINCORES` (`0x64` = 100 % =
@@ -232,10 +235,11 @@ Performance within ~2 % of each other. The plan matters when it is wrong (the si
 revert above, or a plan that drops clocks mid-session), not as a performance ladder.
 
 **Thermals set the floor; an undervolt can lower it** — but only if it holds the same
-sustained clock at lower voltage. One A/B test where sustained clocks sagged
-(1.925 → 1.875 GHz) measured **0.1 % lows ~15 % worse** at equal averages and 60 W less
-power. Validate with load *transitions*, not a flat stress loop, then in-game. AMD
-implementation: negative Curve Optimizer offset, per CCD on dual-CCD parts.
+sustained clock at lower voltage. One GPU A/B test (RTX 3080) where sustained clocks
+sagged (1.925 → 1.875 GHz) measured **0.1 % lows ~15 % worse** at equal averages and
+60 W less power. Validate with load *transitions*, not a flat stress loop, then
+in-game. The CPU equivalent on AMD is a negative Curve Optimizer offset, per CCD on
+dual-CCD parts; that test did not cover it.
 
 **Boost policy is a short-burst setting.** Aggressive "Processor performance boost
 mode" gained 3–7 % in CPU-sensitive games on a thermally constrained system; the
@@ -245,8 +249,9 @@ advantage disappeared after 10–15 minutes once sustained thermal limits took o
 
 **Defender.** Shader compilation is high-I/O work and real-time scanning intercepts it
 synchronously. The targeted exclusions are `%LocalAppData%\NVIDIA\DXCache` and Steam's
-*downloading* folder. Never exclude the game directory — it contains kernel-level
-anti-cheat. Use path exclusions, not process exclusions. Verify with
+*downloading* folder. Never exclude the game directory: an exclusion there is a scan
+blind spot over the code that actually runs. Use path exclusions, not process
+exclusions. Verify with
 `(Get-MpPreference).ExclusionPath`.
 
 **Monitoring software has a cost.** HWiNFO sensor polling and Afterburner's power graph

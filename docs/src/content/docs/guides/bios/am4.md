@@ -33,7 +33,7 @@ memtest-clean at 3800 CL14 while logging **4,000 corrected errors in an hour**. 
 configuration with zero WHEA-19 entries over a week beats a faster one that logs them.
 
 ```powershell
-Get-WinEvent -FilterHashtable @{LogName='System'; Id=19} -MaxEvents 20 |
+Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WHEA-Logger'; Id=19} -MaxEvents 20 |
   Select-Object TimeCreated, ProviderName
 ```
 
@@ -72,12 +72,12 @@ before attributing a performance gap to timings.
 Undervolting via Curve Optimizer reliably helps sustained clocks: lower voltage at the
 same frequency means less thermal back-off in a long session.
 
-On the power limits, **capping EDC beats unlimited** on Zen 3. A widely reproduced
-5950X result set PPT 200 / TDC 200 / EDC 150 rather than the board's "Motherboard"
-maximum and measured *higher* effective clocks — about 5,030 MHz single-core and
-4,600 MHz all-core — with Cinebench R23 temperatures dropping from 86–87 °C to 74 °C
-and the score gaining 600 points. Zen 3's boost algorithm behaves badly at very high
-current draw.
+On the power limits, **capping EDC has been reported to beat unlimited** on Zen 3. A
+widely cited 5950X result (one r/Amd tuning post) set PPT 200 / TDC 200 / EDC 150
+rather than the board's "Motherboard" maximum and measured *higher* effective clocks —
+about 5,030 MHz single-core and 4,600 MHz all-core — with Cinebench R23 temperatures dropping from 86–87 °C to 74 °C
+and the score gaining 600 points. Zen 3's boost algorithm is reported to behave badly
+at very high current draw.
 
 Curve values are per-core, not per-chip: the best cores tolerate far less negative
 offset than the rest. A typical tuned set is −10 to −14 on the best two to four
@@ -86,7 +86,8 @@ cores and −20 to −30 on the remainder, plus a +125 MHz boost override.
 :::caution[Curve Optimizer instability appears at idle, not under load]
 A negative offset that passes Cinebench is not validated. Undervolt instability on
 Zen 3 presents as WHEA errors and random reboots at **idle or light load**, hours
-later. Test by leaving the machine on and unattended, not by stress testing.
+later. An all-core stress pass is not enough on its own: cycle single-thread load
+across each core (CoreCycler), then leave the machine on through long idle and light use.
 :::
 
 **Disabling Global C-States costs 100–150 MHz of boost** on these chips, because the

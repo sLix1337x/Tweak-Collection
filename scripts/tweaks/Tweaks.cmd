@@ -1,6 +1,7 @@
 @echo off
 REM Double-clicking a .ps1 opens it in an editor instead of running it, so this
-REM launcher exists for that. Tweaks.ps1 asks Windows for elevation itself.
+REM launcher exists for that. With no arguments Tweaks.ps1 asks Windows for
+REM elevation itself; -Apply, -Revert and -Status need an elevated prompt.
 setlocal
 
 set "PS=powershell.exe"

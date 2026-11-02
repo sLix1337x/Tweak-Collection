@@ -31,8 +31,8 @@ for the way that actually works.
 <p class="tc-verdict-row"><span class="tc-verdict tc-verdict-invalid">Invalid</span></p>
 
 Microsoft documents this as the number of outstanding ACKs before the delayed-ACK timer
-is ignored: range `0`–`255`, default `2`, and **"the value of 0 is not valid and is
-treated as the default, 2"**. Writing `0` produces default behaviour that reads as a
+is ignored: range `0`–`255`, default `2`, and **"the value of 0 (zero) isn't valid
+and is treated as the default, 2"**. Writing `0` produces default behaviour that reads as a
 change.
 
 `1` acknowledges every segment rather than every second one:
@@ -93,7 +93,7 @@ netsh interface ipv4 set subinterface "Ethernet" mtu=1458 store=persistent
 ```
 
 1500 is the standard Ethernet MTU and correct on essentially every home connection.
-1458 and 1492 come from PPPoE DSL setups where encapsulation overhead reduces the
+1492 comes from PPPoE DSL setups, where the 8-byte encapsulation header reduces the
 usable payload.
 
 An MTU smaller than the path supports means more packets for the same data and more
@@ -142,8 +142,8 @@ internet-facing profiles is CUBIC.
 
 The value is real and read, but the number quoted in guides is wrong. It is a bitmask
 under `HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters`, and `0xFFFFFFFF` sets
-bits with no defined meaning alongside the ones that do. Documented consequences: the
-loopback and tunnel interfaces components depend on are also disabled, and boot takes
+bits with no defined meaning alongside the ones that do. Documented consequences: tunnel
+interfaces are disabled along with everything else (only loopback is kept), and boot takes
 roughly five seconds longer while name resolution waits on interfaces that no longer
 exist.
 
@@ -153,7 +153,8 @@ values are:
 ```text
 HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters
   DisabledComponents = 0x20   prefer IPv4 over IPv6 in the prefix policy table
-  DisabledComponents = 0xFF   disable IPv6 on all non-tunnel interfaces
+  DisabledComponents = 0xFF   disable IPv6 on all interfaces except loopback
+  DisabledComponents = 0x10   disable IPv6 on non-tunnel interfaces only
 ```
 
 `0x20` addresses resolution order, which is the complaint behind most of these guides.

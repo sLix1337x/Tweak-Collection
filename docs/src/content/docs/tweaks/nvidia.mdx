@@ -42,7 +42,10 @@ HKLM\SYSTEM\CurrentControlSet\Enum\PCI\<device>\Device Parameters\Interrupt Mana
 On systems using line-based interrupts this may reduce interrupt/DPC overhead. It is
 not a guaranteed frame-time improvement.
 
-The same key holds two read-only neighbours: `MessageNumberLimit` caps how many MSI
+The script writes the value for every PCI device in the Display class, so an AMD card
+or an Intel iGPU gets it too, not only the NVIDIA GPU.
+
+The same key holds two neighbours: `MessageNumberLimit` caps how many MSI
 messages the device may request, and a `Range\<n>` subkey (`StartingMessage`,
 `EndingMessage`, `MessagesPerProcessor`) describes their distribution.
 
@@ -99,7 +102,7 @@ NvProfileUpdater*  NvNodeLauncher*
 Circulating scripts disable these by full name including a hardcoded GUID
 (`{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8}`). That GUID is not a per-machine identifier
 but a constant embedded in the GeForce Experience-era task names. On recent drivers
-**the tasks are no longer created at all**. Either way those `schtasks` calls fail
+**the three `NvTm*` tasks no longer seem to be created**. Either way those `schtasks` calls fail
 silently — the scripts redirect output to `nul` and report success.
 
 **Cost:** no automatic driver-update notifications; drivers must be checked manually.
@@ -303,6 +306,6 @@ alone.
 ## The one NVIDIA registry value worth writing
 
 `EnableGR535 = 0` restores the driver-side **Image Sharpening** option in the Control
-Panel on drivers that moved it behind the NVIDIA App. A preference rather than a
+Panel on drivers since 496.76, which removed it. A preference rather than a
 performance tweak, so it ships as a pair of `.reg` files with the
 [tools](../../tools/nvidia-legacy-sharpen/).

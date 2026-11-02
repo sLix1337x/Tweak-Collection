@@ -56,12 +56,12 @@ mixed-refresh multi-monitor setups, covered on the
 [driver install guide](../../guides/nvidia-driver-install/#multiplane-overlay-in-more-detail).
 `[4]` is the low-risk half: MPO and FSO off without touching DWM internals.
 
-The `Mpo` axis writes **two** values, `OverlayTestMode = 5` and `OverlayMinFPS = 0`. On
-Windows 11 24H2 and later the desktop window manager reads both, and `OverlayTestMode`
-alone frequently changes nothing. Both are cleared when the axis returns to `On`.
+The `Mpo` axis writes `OverlayTestMode = 5`; `On` deletes it.
 
-Where a previous `.reg` file set only `OverlayTestMode`, the script reports the axis as
-`MIXED` rather than `Off`. Apply the axis to complete it.
+An earlier version also wrote `OverlayMinFPS = 0`. That value is not an MPO switch:
+Microsoft documents `0` as removing DWM's minimum frame rate for giving a swap chain an
+overlay plane, which makes MPO *more* likely. Both states now delete it, so a machine
+left with it reports the axis as `MIXED`. Apply the axis once to clean it up.
 
 ## Per-game fullscreen optimizations
 
@@ -79,11 +79,13 @@ Windows default.
 That registry value carries other flags for the same executable — `RUNASADMIN`,
 `HIGHDPIAWARE` and so on. It is edited one word at a time so those survive, and
 clearing the last real flag removes the value rather than leaving an empty separator.
-`test-flag.ps1` covers both against its own scratch key and runs in CI on every push.
+`test-flag.ps1` covers both against its own scratch key and runs in CI on pushes to `main` and on pull requests.
 
 ## Using it
 
-Needs an elevated 64-bit PowerShell; 5.1 and 7 both work.
+Needs a 64-bit PowerShell; 5.1 and 7 both work. Only options that write HKLM (`Mpo`,
+`Dwm`, the `GameDvr` policy value) and PresentMon capture need it elevated; `Fso`,
+`WindowedOpt` and `GameFso` are per-user.
 
 ```powershell
 .\Switch-RenderPath.ps1                                  # interactive menu
@@ -110,7 +112,7 @@ backup is taken first: if the backup cannot be written, the change is refused.
 
 Game DVR appears here as an *option* rather than an axis and overlaps with
 [`latency.gamedvr-off`](../../tweaks/latency/#latency.gamedvr-off). Use one or the
-other: they write the same values, and only the tweak script records the old ones for
+other: they write overlapping values, and only the tweak script records the old ones for
 `-Revert`.
 
 `Switch-RenderPath.ps1` writes its own backups to a `_backups/` folder next to itself,

@@ -29,10 +29,10 @@ BIOS is tuning, which belongs on a system that already boots — step 8.
 4. **Chipset drivers**, from the CPU or motherboard vendor, before any other driver.
 5. **Everything else in Device Manager**, via
    [Snappy Driver Installer Origin](#snappy-driver-installer-origin).
-6. **GPU driver.** See
+6. **Windows Update**, fully, including optional driver updates. Reboot until it is
+   quiet. Any GPU driver it pulls in is replaced in the next step.
+7. **GPU driver.** See
    [installing an NVIDIA driver cleanly](../../guides/nvidia-driver-install/).
-7. **Windows Update**, fully, including optional driver updates. Reboot until it is
-   quiet.
 8. **Back into the BIOS for tuning.** Enable XMP/EXPO and Resizable BAR now, and run
    memtest86 against a usable system if the profile turns out unstable.
 9. **Baseline measurement.** LatencyMon for ten minutes and a frame-time capture in a

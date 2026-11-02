@@ -28,8 +28,8 @@
 
     Absence matters throughout. Stock Windows does not ship most of these values
     at all, so the stock state DELETES them rather than writing a zero. For
-    OverlayTestMode this is documented: 5 disables MPO, and the enable is the
-    value's ABSENCE - writing 0 is not the same thing.
+    OverlayTestMode, 5 disables MPO; DWM acts only on 4 and 5, so 0 also leaves
+    MPO on, but deleting the value is the clean undo.
 
 .PARAMETER Mode
     Menu    (default) - interactive
@@ -557,14 +557,17 @@ function Add-Entry {
 }
 
 # --- Axis: Mpo -------------------------------------------------------------
-# 5 disables MPO. The enable is the value's ABSENCE - writing 0 is NOT the same
-# thing and does not re-enable it.
+# 5 disables MPO. dwmcore acts only on 4 and 5, so 0 leaves MPO on too; the
+# stock state is the value's absence, so On deletes it.
 Add-Entry -Axis 'Mpo' -Path $DwmKey -Name 'OverlayTestMode' -Kind 'DWord' `
           -States @{ On = $null; Off = 5 }
-# On 24H2 and later DWM reads a second value, and OverlayTestMode alone often
-# does nothing. Here the enable is also the absence: 0 is the OFF state.
+# OverlayMinFPS is NOT an MPO switch. Microsoft documents 0 as removing DWM's
+# minimum frame rate for giving a swap chain an overlay plane, which makes MPO
+# MORE likely (dwmcore default 15). Earlier versions wrote 0 as part of Off; both
+# states now delete it, so an install left by those versions shows MIXED until
+# the axis is applied once, which cleans it up.
 Add-Entry -Axis 'Mpo' -Path $DwmKey -Name 'OverlayMinFPS' -Kind 'DWord' `
-          -States @{ On = $null; Off = 0 }
+          -States @{ On = $null; Off = $null }
 
 # --- Axis: Dwm -------------------------------------------------------------
 foreach ($n in $DwmStripped.Keys) {
@@ -1714,7 +1717,7 @@ function Invoke-Menu {
         Write-Ui ('    [O] OPEN BACKUP FOLDER   [X] PRUNE BACKUPS (KEEP {0} NEWEST)' -f $BackupKeep)
         Write-Ui '    [P] PER-GAME FSO (ONE EXE)   [V] MEASURE PRESENT MODE (PRESENTMON)'
         if (-not (Test-Admin)) {
-            Write-Ui '    NOT ELEVATED - Mpo / Dwm / Fso / Game DVR cannot be written.' -ForegroundColor Red
+            Write-Ui '    NOT ELEVATED - Mpo / Dwm / Game DVR policy (HKLM) cannot be written.' -ForegroundColor Red
         }
         if ($rebootPending) {
             Write-Ui ''

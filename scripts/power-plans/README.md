@@ -5,7 +5,7 @@ carries every setting in the scheme, hidden ones included.
 
 | File | What it is |
 | --- | --- |
-| `CS2 Zen3 Frametime.pow` | Ultimate Performance with a handful of deliberate changes for a Ryzen 5950X desktop. |
+| `CS2 Zen3 Frametime.pow` | A Balanced-based plan with Ultimate-style overrides for a Ryzen 5950X desktop. |
 
 ## Import
 

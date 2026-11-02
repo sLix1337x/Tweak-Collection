@@ -23,7 +23,7 @@ This page covers what survives.
 | `-threads N` | **A/B it.** See below. |
 | `-mainthreadpriority 2` | **Try it.** Raises the main thread's priority within the process. Benchmark-oriented sources credit it with smoother 1 % lows; revert if an older CPU stutters. |
 | `-noreflex` | **Situational.** For players capping externally who do not want Reflex's queue management interfering. See [the frame cap](../frame-cap/#reflex). |
-| `-vulkan` | **No, on Windows.** Controlled comparisons put DX11 ~14 % ahead on averages with better lows. Vulkan is a Linux and Steam Deck path. |
+| `-vulkan` | **No, on Windows.** Controlled comparisons put DX11 ~17 % ahead on averages with better lows. Vulkan is a Linux and Steam Deck path. |
 | `-high` | **No.** Source 1-era flag. CS2 manages its own priority; the documented side effect is instability. |
 | `-tickrate 128` | **Dead.** CS2 is sub-tick. Never made a server 128-tick. |
 | `-d3d9ex` / `-nod3d9ex` | **Dead.** Source 1 relics. |
@@ -55,28 +55,28 @@ settings commonly lowered remove information.
 
 The per-setting percentages below come from a full every-setting sweep (ThourCS2,
 August 2025: 9800X3D / RTX 5070, 1280×960, Dust2 benchmark map). Percentages shrink on
-slower GPUs and grow where the GPU is actually the limit, but the ordering holds.
+faster GPUs or where the CPU is the limit, and grow on slower GPUs; the ordering holds.
 
 | Setting | Where to put it | Measured cost / why |
 | --- | --- | --- |
 | **Shader Detail** | Low | High measured −5.4 % average. No competitive information. First thing to cut. |
 | **Particle Detail** | Low | Very High −10 %, High −4.8 % average. The sweep found no visible difference between levels in smoke/molotov tests, so Low loses nothing. |
-| **Dynamic Shadows** | **All** | All measured −2 % average, **+4.7 % on 1 % lows**. Renders the enemy shadows that reveal players around corners and overhead. Non-negotiable. |
+| **Dynamic Shadows** | **All** | All measured −2 % average and no loss on 1 % lows (+4.7 % in a single sweep). Renders the enemy shadows that reveal players around corners and overhead. Non-negotiable. |
 | **Global Shadow Quality** | Medium | The *cost* lever, separate from Dynamic Shadows — see below. Medium −8 %, High −12.9 %, Very High −22 % average against Low. |
 | **Ambient Occlusion** | Off | Medium/High −4.5–4.8 % average; the sweep found the added contact shadow hard to notice in fast play. |
-| **MSAA** | CMAA2 or 2× | The steepest scaler in the menu: 2× −10 %, 4× −12.2 %, 8× −18 % average. CMAA2 costs only −3.8 % and fixes most of the shimmering that None leaves on distant models. |
+| **MSAA** | CMAA2 or 2× | One of the two steepest scalers, with Global Shadow Quality: 2× −10 %, 4× −12.2 %, 8× −18 % average. CMAA2 costs only −3.8 % and fixes most of the shimmering that None leaves on distant models. |
 | **HDR** | Quality | Performance mode adds a film-grain filter that costs clarity; Quality measured −2.7 % average, **+3.3 % on 1 % lows**. |
 | **FidelityFX / upscaling** | Disabled | Reduces GPU load that is not the limit. Only consider at genuine 99 % GPU utilisation. |
 | **Model / Texture Detail** | Low | Medium measured −8.1 % average in the sweep, with no visible difference found in its comparison shots. The counter-claim (Low makes blood and decals harder to read) comes from settings guides without measurements — benchmark the trade before paying 8 % for it. |
 | **Texture Filtering** | 16× | Effectively free: 16× measured −1 % average, **+5 % on 1 % lows**. |
 | **Texture Streaming** | On for 8 GB VRAM and below | |
-| **Boost Player Contrast** | On | Measured −2.1 % average but **+5.8 % on 1 % lows** — a lows-positive visibility setting. |
+| **Boost Player Contrast** | On | Measured −2.1 % average and no loss on 1 % lows (+5.8 % in the same sweep). |
 
 Plus `fps_max_ui 60`, so the menu stops rendering at full rate. (`fps_max_menu` was
-removed from the engine; current builds use `fps_max_ui`, default 0 = unlimited.)
+removed from the engine; current builds use `fps_max_ui`, default 120; 0 = unlimited.)
 `engine_no_focus_sleep 0` keeps the game rendering at full rate when unfocused —
-relevant when alt-tabbing during benchmarking; the default throttles an unfocused
-game to 20 FPS.
+relevant when alt-tabbing during benchmarking; the default (20) sleeps up to 20 ms per
+frame while unfocused, roughly a 50 FPS ceiling.
 
 ### The shadow setting commonly set backwards
 
@@ -115,14 +115,15 @@ Sub-tick invalidated the CS:GO netcode canon. The modern client config is two se
 plus one convenience cvar.
 
 ```text
-rate 1000000                  # console ceiling; the Settings UI caps at 786432, the engine default is 80000
+rate 1000000                  # console ceiling; 786432 is the in-game default and the Settings UI maximum
 cl_net_buffer_ticks 0         # 0 stable wired · 1 if telemetry shows jitter/loss · 2 as a crutch
 mm_dedicated_search_maxping 60  # caps matchmaking server search ping; default 150, archived
 ```
 
-`rate` is archived, so one autoexec entry persists it. The three values are distinct
-and widely confused: the engine default (80000), the UI slider maximum (786432), and
-the console maximum (1000000). On any modern broadband connection, set 1000000.
+`rate` is archived, so one autoexec entry persists it. Two values are widely confused:
+786432 (in-game default and Settings maximum) and the console maximum (1000000).
+`help rate` shows the value your build uses. On any modern broadband connection, set
+1000000.
 
 `cl_net_buffer_ticks` is the "Buffering to smooth over packet loss" slider. Each
 buffered tick costs ~15.6 ms of *displayed-state* delay at 64 Hz server intervals —
@@ -172,14 +173,14 @@ and "Enhance pointer precision" cannot reach it — any guide prescribing "disab
 acceleration in Windows for CS2" describes a dead control path. (Still worth disabling
 for everything else: [input guide](../../guides/input/).)
 
-**High polling rates cost frames in CS2 specifically.** The underlying SDL issue —
+**High polling rates can cost frames.** The underlying SDL issue —
 `GetRawInputData` acquiring a lock per call
 ([SDL #8756](https://github.com/libsdl-org/SDL/issues/8756)) — was fixed on SDL's side
-in early 2024, but community captures still measure the cost in CS2: on a mid-range
-CPU, 4000 Hz cost ~20 % of frame rate against 1000 Hz, 8000 Hz ~33 %, in a scene that
-was GPU-bound to begin with. Sensor-side limitation: 800 DPI cannot generate enough
-counts to fill 8000 reports per second, so the popular "8 kHz plus 400 DPI" pairing is
-self-defeating.
+in early 2024. The measured cost is from CS:GO: on a Ryzen 7 5700X, 4000 Hz cost ~20 %
+of frame rate against 1000 Hz and 8000 Hz ~33 %, on an empty map. Treat it as the risk
+to rule out in CS2 with a frame-time capture. Sensor-side limitation: 800 DPI cannot
+generate enough counts to fill 8000 reports per second, so the popular "8 kHz plus
+400 DPI" pairing is self-defeating.
 
 **Run 1000–2000 Hz** on a rear motherboard port; higher only if a frame-time capture
 proves it free on the machine.

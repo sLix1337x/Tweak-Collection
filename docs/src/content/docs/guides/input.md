@@ -29,8 +29,8 @@ read the cursor rather than the device.
 ## Pointer speed — leave it at 6/11
 
 The slider in the same dialog. Position 6 of 11 is 1:1: every mouse count moves the
-pointer one unit. Every other position multiplies, and multipliers below 6 are
-fractions, so counts are dropped and the pointer skips.
+pointer one unit. Every other position multiplies: below 6 the multiplier is a
+fraction, so counts are dropped; above 6 it exceeds 1, so the pointer skips pixels.
 
 Change the mouse's DPI rather than this slider.
 
@@ -50,21 +50,22 @@ Polling rate is how often the mouse reports. At 1000 Hz a report arrives every
 At 4 kHz or 8 kHz, verify the cost with a frame-time capture. This is one of the few
 places where a latency setting can cost frames.
 
-:::note[The controller batches reports too, and it is not configurable]
-Intel xHCI controllers apply interrupt moderation with a default interval around 50 µs:
-completions are batched and the CPU is interrupted when the timer expires. At 1000 Hz
-polling, reports are 1000 µs apart and the window is noise. At 8000 Hz they are 125 µs
-apart and the moderation window is a visible fraction of the interval, smearing
-delivery timing.
+:::note[The controller moderates interrupts too, and it is not configurable]
+Windows' inbox xHCI driver (`usbxhci.sys`, Windows 10 1507 to Windows 11 26H1) sets every
+interrupter's moderation interval (IMOD) to 50 µs, whatever the controller vendor. IMOD
+is a minimum gap between interrupts, not a collection timer: once the counter has run
+down, the next event interrupts immediately. At 1000 Hz (1000 µs apart) or 8000 Hz
+(125 µs apart) the counter is normally already at zero, so an isolated mouse waits
+nothing. A report waits for the remainder only if another event on the same interrupter
+raised an interrupt in the previous 50 µs — the argument for putting the mouse on a
+different xHCI controller from busy devices.
 
-There is no registry value or driver property for it. The interval lives in the
-controller's IMOD register, which is memory-mapped hardware: changing it means
-computing the register address from the controller's resources, writing it with a tool
-like RWEverything, identifying the right interrupter by trial, and repeating at every
-boot from a scheduled task, because the write does not survive a reboot.
-
-The ceiling this removes exists only above 4 kHz, which is the argument for
-1000–2000 Hz.
+There is no registry value or driver property for it: the driver writes the fixed value
+itself each time the controller enters D0. The interval lives in the controller's IMOD
+register, which is memory-mapped hardware: changing it means computing the register
+address from the controller's resources, writing it with a tool like RWEverything,
+identifying the right interrupter by trial, and repeating the write after every reboot
+and every return to D0.
 :::
 
 ## USB port choice
@@ -78,8 +79,9 @@ interface saturating a shared controller shows up as input hitching.
 
 ## Power management on the USB stack
 
-Selective suspend and device idle states put a port or device into a low-power state
-between reports; waking it delays the next one.
+Selective suspend puts an idle device into a low-power state after an idle timeout, not
+between reports, and waking it delays the next report. Windows leaves it off for HID
+devices such as mice and keyboards unless the device opts in.
 [`power.usb-suspend-off`](../../tweaks/power/#power.usb-suspend-off) disables this
 globally, [USB-LatencySuite](../../tools/usb-latency-suite/) per device and per driver.
 

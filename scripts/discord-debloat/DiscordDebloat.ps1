@@ -170,7 +170,7 @@ $script:DebloatProfile = [ordered]@{
         'All'       = @{ Label = 'All models'; Patterns = @() }
         'NoBvc'     = @{ Label = 'No background voice cancellation'
                          Patterns = @('krisp-bvc-*.kef') }
-        'Essential' = @{ Label = 'Essential only - VAD + full-band noise cancellation'
+        'Essential' = @{ Label = 'Essential only - VAD + 32 kHz noise cancellation'
                          Patterns = @('krisp-bvc-*.kef', 'krisp-nc-o-lite-*.kef',
                                       'krisp-nc-o-nb-*.kef') }
         'None'      = @{ Label = 'Remove Krisp entirely'; Patterns = @() }
@@ -1486,7 +1486,7 @@ $xamlText = @'
               <StackPanel Margin="13,0,0,0" VerticalAlignment="Center">
                 <TextBlock Text="DEBLOAT" Foreground="{StaticResource TxtHi}" FontSize="14.5"
                            FontWeight="Bold"/>
-                <TextBlock x:Name="LblVersion" Text="suite v1.0.0" Foreground="{StaticResource TxtLo}"
+                <TextBlock x:Name="LblVersion" Text="suite v1.1.0" Foreground="{StaticResource TxtLo}"
                            FontSize="10"/>
               </StackPanel>
             </StackPanel>

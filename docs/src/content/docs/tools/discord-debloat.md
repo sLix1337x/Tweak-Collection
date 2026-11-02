@@ -8,7 +8,7 @@ tags:
   - privacy
 ---
 
-Built with **Amaaz**. A WPF tool that takes a stock Discord Stable install from
+Built by **Amaaz** and **sLix1337**. A WPF tool that takes a stock Discord Stable install from
 **607.5 MB down to 314.6 MB** (1074 files to 194) without breaking voice.
 
 Single PowerShell file, no installer, no dependencies. Windows PowerShell 5.1 and
@@ -32,8 +32,9 @@ scripts/discord-debloat/
 | Module trim | ~4 MB | Helper executables and unused model files inside modules that stay |
 | Chromium assets | ~1 MB | HiDPI artwork, legacy snapshot, crash reporter |
 
-Always kept: `Discord.exe`, the desktop core, voice, Krisp, input capture, the tray icon
-and taskbar buttons, plus `updater.node` and `installer.db`. Despite its name,
+Always kept: `Discord.exe`, the desktop core, voice, input capture, the tray icon and
+taskbar buttons, plus `updater.node` and `installer.db`. Krisp is kept by default; see
+[Krisp](#krisp). Despite its name,
 `updater.node` is also the module registry, and deleting it breaks voice rather than
 just updates.
 
@@ -57,7 +58,7 @@ It is therefore treated as all-or-nothing, with a preset:
 | --- | --- | --- |
 | **All models** (default) | 0 | Nothing removed |
 | No background voice cancellation | 14.4 MB | Drops the mode that filters out other people talking nearby |
-| Essential only | 19.9 MB | Keeps voice-activity detection and full-band noise cancellation |
+| Essential only | 19.9 MB | Keeps voice-activity detection and the 32 kHz noise-cancellation model |
 | Remove Krisp entirely | 40.4 MB | No noise suppression, and no voice-activity detection |
 
 Under the preset it reads the local client's logs and reports which models the machine
@@ -78,8 +79,11 @@ harmless to change back by hand. Reinstalling from
 - **Windows 10 or 11.** Rounded corners and the translucent window need 11; on 10 it
   looks flat.
 - **Discord Stable.** Canary, PTB and Development builds are detected but untested.
-- Administrator rights, because Discord lives under the user profile and the tool
-  terminates the running client before touching files.
+- Administrator rights. The script elevates itself on start, but only the optional
+  autostart cleanup needs them (it can remove Discord's entry from `HKLM\...\Run`);
+  everything else is per-user. Run it from the account Discord is installed under:
+  paths come from `%LOCALAPPDATA%` and `%APPDATA%`, so elevating with a different admin
+  account points it at that account's profile.
 
 :::caution[This deletes files from a third-party application]
 Not affiliated with or endorsed by Discord. A future Discord release may lay things out

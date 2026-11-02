@@ -54,10 +54,12 @@ measure now.
 Dynamic tick lets the kernel skip timer interrupts when idle. Disabling it forces a
 constant tick.
 
-A common Windows 10 latency recommendation. On Windows 11 it is counterproductive: it
-prevents the CPU entering deep idle states, raising temperature and reducing boost
-headroom, and Microsoft has improved the dynamic tick path for latency across several
-releases.
+A common Windows 10 latency recommendation. On Windows 11 it keeps the periodic tick
+running while idle, which costs idle power and, on thermally constrained systems, boost
+headroom. Before 24H2 it can also break quantum expiration: with per-CPU clock-tick
+scheduling on, the clock timer stopped for idle is not re-armed, so `KiUpdateRunTime`
+never flags the running thread's quantum end. 24H2 and later largely mask this with a
+servicing fix.
 
 :::note[The revert command usually given alongside it is wrong]
 Guides give the revert as:
@@ -80,9 +82,9 @@ bcdedit /deletevalue disabledynamictick
 
 Timer coalescing groups timer expirations that fall close together so the CPU wakes
 once instead of several times. The control is real: a `TimerCoalescing` binary value
-under `HKLM\SYSTEM\CurrentControlSet\Control\Power`, exactly 80 bytes, two blocks of
-four DWORD tolerance values read by the graphics and kernel timer paths at
-initialisation.
+under `HKLM\SYSTEM\CurrentControlSet\Control\Power`, exactly 80 bytes (20 DWORDs)
+holding two blocks of four DWORD tolerance values, read by win32kfull's
+`InitTimerCoalescing` at initialisation.
 
 A timer firing at its exact deadline rather than within a tolerance window is only
 useful if something was waiting on that deadline, and applications that care request
@@ -101,10 +103,13 @@ The kernel's default tick is 15.625 ms, and a program that wants finer granulari
 asks for it with `timeBeginPeriod` or `NtSetTimerResolution`. Timer tools exist to
 force that request system-wide.
 
-Since Windows 10 version 2004 the requests are **per-process**. A game asking for 1 ms
-gets 1 ms regardless of what else did, and a background application can no longer drag
-the whole system to 15.6 ms — the problem the tools were written for. Setting a timer
-resolution *for* a game from outside it is therefore not possible.
+Under the old global model the finest outstanding request won, so a background
+application could only drag the whole system to a *finer* resolution — typically 1 ms,
+at a cost in power — never a coarser one. Since Windows 10 version 2004 the requests are
+**per-process**: a game asking for 1 ms gets 1 ms, and one process's request no longer
+applies to others. That cross-process effect is exactly what the force-resolution tools
+relied on, so setting a timer resolution *for* a game from outside it is no longer
+possible.
 
 The undocumented `GlobalTimerResolutionRequests` (DWORD `1`) under
 `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel` restores the old global
@@ -162,10 +167,10 @@ Against Microsoft's BCDEdit reference the block falls into three groups.
 | `MSI Default` | The element is `msi [Default \| ForceDisable]`. `Default` is the default. This does not enable MSI mode — that is a per-device registry setting, covered on [NVIDIA](../../../tweaks/nvidia/#nvidia.msi-mode). |
 | `x2apicpolicy Enable` | "The system defaults to using extended APIC mode if it is available." Already on where supported; impossible where not. |
 | `usephysicaldestination No` | The element *forces* the physical APIC. `No` is the not-forcing state. |
-| `configaccesspolicy Default` | Not in Microsoft's reference at all — and `Default` is again the default. |
+| `configaccesspolicy Default` | The element is `configaccesspolicy [Default \| DisallowMmConfig]`. `Default` is again the default. |
 
-**Two are debugging flags Microsoft says not to use.** `tscsyncpolicy` carries the
-line "This option should only be used for debugging", as `useplatformclock` and
+**Two do nothing useful for latency.** `tscsyncpolicy` is a debugging flag, carrying
+the line "This option should only be used for debugging", as `useplatformclock` and
 `disabledynamictick` do. The claim that Enhanced trades FPS for input lag has no
 documented mechanism, and on any CPU with an invariant TSC there is nothing left to
 synchronise. `usefirmwarepcisettings No` is a real compatibility knob — it tells
@@ -324,7 +329,9 @@ Hidden power settings, exposed by unhiding the
 They control how readily the processor moves between idle states and are frequently
 recommended at `100` alongside core parking advice.
 
-Real settings with a real mechanism, but no published measurement shows a benefit over
-the plan default, and a slightly worse state is hard to attribute back to them. The
+Real settings: Microsoft documents them as idleness percentages, so at `100` a core is
+not promoted out of its shallowest idle state. No published measurement shows a gaming
+benefit over the plan default. The documented direct cap on idle depth is
+`Processor idle state maximum` (`IDLESTATEMAX`). The
 [Ultimate Performance plan](../../../tweaks/power/#power.ultimate) covers the case they
 are usually reached for.

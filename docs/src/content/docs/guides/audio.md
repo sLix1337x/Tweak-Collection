@@ -104,8 +104,8 @@ format:
 | `\Properties\{b3f8fa53-0004-438e-9003-51a46e139bfc},3` | Allow applications to take exclusive control |
 | `\Properties\{b3f8fa53-0004-438e-9003-51a46e139bfc},4` | Give exclusive mode applications priority |
 
-- **Allowed** for ASIO/WASAPI-exclusive playback in music or production work. It
-  removes the shared mixer from the path and is the only way an application runs the
+- **Allowed** for WASAPI-exclusive playback in music or production work (ASIO bypasses
+  the Windows audio engine regardless of this checkbox). It removes the shared mixer from the path and is the only way an application runs the
   endpoint at its own format.
 - **Off** where a game or voice chat keeps losing the device to another application.
 
@@ -203,7 +203,7 @@ the engine enumerates:
 | Claim | Reality |
 | --- | --- |
 | Disabling **Windows Audio** or **AudioEndpointBuilder** | Kills audio entirely. Both are in [services that look safe and are not](../../tweaks/services/). |
-| Raising the sample rate to reduce latency | The buffer size sets the latency, not the sample rate. A higher rate raises throughput and interrupt load. |
+| Raising the sample rate to reduce latency | The Windows shared engine sets its period in time (~10 ms by default), so the rate does not change it. Where the buffer is counted in samples (ASIO, a DAW), latency is samples ÷ rate, so lower the buffer instead. A higher rate raises throughput; wake-ups follow the buffer period, not the rate. |
 | Editing the format blob in the registry to reach a rate the UI does not offer | The list in the UI is what the driver reports as supported. A blob the driver cannot honour produces a silent endpoint, not a new capability. |
 | "Audio latency" registry bundles | Almost all of them write MMCSS values. The real ones are documented under [`latency.mmcss-games`](../../tweaks/latency/#latency.mmcss-games). |
 | Disabling MMCSS for audio | MMCSS exists to protect audio threads. Removing it causes the crackle it is supposed to fix. |

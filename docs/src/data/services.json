@@ -328,7 +328,7 @@
   "display": "Credential Enrollment Manager",
   "startup": "Manual",
   "recommendation": "Don't disable",
-  "verdict": "",
+  "verdict": "No",
   "text": "This service supports the secure storage and retrieval of user credentials. For example, tokens for web sites, remote desktop connections, or other apps.",
   "desktop": ""
  },
@@ -441,20 +441,11 @@
   "desktop": ""
  },
  {
-  "name": "Diagnostics Hub Std Coll Svc",
-  "display": "Mirosoft Diagnostics Hub Standard Collector",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
-  "desktop": ""
- },
- {
   "name": "diagnosticshub.standardcollector.service",
   "display": "Microsoft (R) Diagnostics Hub Standard Collector",
   "startup": "Manual",
   "recommendation": "Don't disable",
-  "verdict": "",
+  "verdict": "No",
   "text": "Diagnostics Hub Standard Collector Service collects real time ETW events and processes them. Reconfiguring this service isn't recommended.",
   "desktop": ""
  },
@@ -657,12 +648,12 @@
   "desktop": ""
  },
  {
-  "name": "fax",
+  "name": "Fax",
   "display": "Fax",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
+  "startup": "Manual",
+  "recommendation": "OK to disable",
+  "verdict": "Yes",
+  "text": "(no description in MS IoT guidance)",
   "desktop": ""
  },
  {
@@ -785,10 +776,10 @@
  {
   "name": "InstallService",
   "display": "Microsoft Store Install Service",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
+  "startup": "Manual",
+  "recommendation": "OK to disable",
+  "verdict": "Yes",
+  "text": "(no description in MS IoT guidance)",
   "desktop": ""
  },
  {
@@ -1116,21 +1107,21 @@
   "desktop": ""
  },
  {
-  "name": "p2pimsv",
+  "name": "p2pimsvc",
   "display": "Peer Networking Identity Manager",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
+  "startup": "Manual",
+  "recommendation": "OK to disable",
+  "verdict": "Yes",
+  "text": "(no description in MS IoT guidance)",
   "desktop": ""
  },
  {
   "name": "p2psvc",
   "display": "Peer Networking Grouping",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
+  "startup": "Manual",
+  "recommendation": "OK to disable",
+  "verdict": "Yes",
+  "text": "(no description in MS IoT guidance)",
   "desktop": ""
  },
  {
@@ -1244,19 +1235,19 @@
  {
   "name": "PNRPAutoReg",
   "display": "PNRP Machine Name Publication Service",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
+  "startup": "Manual",
+  "recommendation": "OK to disable",
+  "verdict": "Yes",
+  "text": "(no description in MS IoT guidance)",
   "desktop": ""
  },
  {
   "name": "PNRPsvc",
   "display": "Peer Name Resolution Protocol",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
+  "startup": "Manual",
+  "recommendation": "OK to disable",
+  "verdict": "Yes",
+  "text": "(no description in MS IoT guidance)",
   "desktop": ""
  },
  {
@@ -1595,10 +1586,10 @@
  {
   "name": "SmsRouter",
   "display": "Microsoft Windows SMS Router Service",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
+  "startup": "Manual",
+  "recommendation": "OK to disable",
+  "verdict": "Yes",
+  "text": "(no description in MS IoT guidance)",
   "desktop": ""
  },
  {
@@ -2018,10 +2009,10 @@
  {
   "name": "WaaSMedicSvc",
   "display": "Windows Update Medic Service",
-  "startup": "",
-  "recommendation": "(not on MS list)",
-  "verdict": "Depends (not on MS list)",
-  "text": "(not documented in MS IoT guidance)",
+  "startup": "Manual",
+  "recommendation": "Don't disable",
+  "verdict": "No",
+  "text": "(no description in MS IoT guidance)",
   "desktop": ""
  },
  {

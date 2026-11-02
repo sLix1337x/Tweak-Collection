@@ -22,7 +22,12 @@ Only the low six bits are used, as three independent 2-bit fields:
 | --- | --- | --- | --- | --- |
 | 5-4 | Quantum length | OS default | Long | Short |
 | 3-2 | Quantum type | OS default | Variable | Fixed |
-| 1-0 | Foreground boost | None (1:1) | Medium (2:1) | High (3:1) |
+| 1-0 | Foreground boost | None | Medium (+1 priority) | High (+2 priority) |
+
+The foreground field adds 0/1/2 to a foreground thread's priority after a wait (capped
+at 15) and selects the foreground entry of the quantum table. Only the *Variable* table
+differs per entry (2× / 3× the background quantum before 24H2); the *Fixed* table's
+three entries are equal. `3` is treated as `2`.
 
 Both quantum fields treat `0` as "use the OS default", which is why the stored default
 of `2` is a valid value rather than an unset one: the same `2` gives short and variable
@@ -44,10 +49,17 @@ is a literal "no boost", which the *Background services* radio writes.
 | `0x15` | 21 | Long | Variable | Medium |
 | `0x14` | 20 | Long | Variable | None |
 
+:::note[24H2 and later]
+The 1:2:3 quantum ratios are pre-24H2. 24H2 makes the quantum unit six times smaller
+(`ShortThreadQuantum`), and with *Variable* most threads take their quantum from their
+QoS level (`BamQosLevel`) instead of this table; *Fixed* still uses it.
+:::
+
 ### The commonly recommended values
 
-**The stored default on client Windows is `2`** — all three fields on "OS default",
-resolving on a desktop SKU to short quantum, variable, 3:1 foreground boost.
+**The stored default on client Windows is `2`**: both quantum fields on "OS default"
+and the foreground field at `2` (High), resolving on a desktop SKU to short, variable,
+High.
 
 `0x26` is the same combination written out explicitly. It is what System Properties →
 Advanced → Performance → Advanced → *Adjust for best performance of: **Programs***

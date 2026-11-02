@@ -1,6 +1,6 @@
 ---
 title: Service reference
-description: All 266 Windows services with Microsoft's own recommendation, and why that recommendation was written for IoT devices rather than desktops.
+description: 265 Windows services, 260 of them with Microsoft's own recommendation, and why that recommendation was written for IoT devices rather than desktops.
 sidebar:
   order: 5
 tags:
@@ -11,7 +11,9 @@ tags:
 import ServiceTable from '../../../components/ServiceTable.astro';
 
 Every service in Microsoft's own configuration table, with its default startup
-type, Microsoft's recommendation, and what stops working when it is disabled.
+type, Microsoft's recommendation, and what stops working when it is disabled. The five
+rows marked *not on MS list* are services the table does not cover; some exist only
+with an optional feature such as SMB1.
 
 :::caution[This table is Microsoft's IoT guidance, not desktop guidance]
 The recommendations come from [Guidance on configuring system
@@ -69,7 +71,8 @@ The table is transcribed faithfully and inherits the source's problems:
 2. **One at a time, with a reboot.** Twenty at once means twenty suspects.
 3. **Expect no frame-rate change.** An idle service costs a few megabytes of paged-out
    working set and no CPU — which is why
-   [this collection disables three](../../tweaks/services/).
+   [this collection disables five](../../tweaks/services/): three in `bloat.services`, two
+   in `privacy.services-telemetry`.
 
 Microsoft's Server guidance states it more directly and applies here too: they do not
 recommend policies that disable services which are not disabled by default.

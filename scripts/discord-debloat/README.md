@@ -16,12 +16,7 @@ Double-click **`Launch DiscordDebloat.cmd`**. It requests administrator rights a
 opens the window.
 
 Windows may warn that the file came from the internet: it is an unsigned script, which
-is normal for a tool distributed this way. If you want to be sure you got the file
-intact, compare the checksum in the `.sha256.txt` next to the archive:
-
-```powershell
-Get-FileHash .\DiscordDebloat-v1.1.0-2026-08-23.7z -Algorithm SHA256
-```
+is normal for a tool distributed this way.
 
 The tool finds your Discord by itself: a running client first, then the standard
 per-user folders, then the installer's registry entry.
@@ -43,9 +38,10 @@ single file first. Nothing is deleted until you confirm.
 | Module trim | ~4 MB | Helper executables and unused model files inside modules that stay |
 | Chromium assets | ~1 MB | HiDPI artwork, legacy snapshot, crash reporter |
 
-**Always kept:** `Discord.exe`, the desktop core, voice, Krisp, input capture,
+**Always kept:** `Discord.exe`, the desktop core, voice, input capture,
 the tray icon and taskbar buttons, plus `updater.node` and
-`installer.db`. Those last two are never removed. Despite the name, `updater.node`
+`installer.db`. Those last two are never removed. Krisp is kept by default; see
+[Krisp models](#krisp-models). Despite the name, `updater.node`
 is also the module registry, and deleting it breaks voice rather than just updates.
 
 ---
@@ -108,7 +104,7 @@ The Debloat page therefore treats Krisp as all-or-nothing, with a preset:
 |---|---|---|
 | **All models** (default) | 0 | Nothing removed |
 | No background voice cancellation | 14.4 MB | Drops the mode that filters out *other people* talking near you |
-| Essential only | 19.9 MB | Keeps voice-activity detection and full-band noise cancellation |
+| Essential only | 19.9 MB | Keeps voice-activity detection and the 32 kHz noise-cancellation model |
 | Remove Krisp entirely | 40.4 MB | No noise suppression, no voice-activity detection |
 
 Underneath the preset the tool reads your own client's logs and tells you which models
@@ -123,8 +119,11 @@ guess.
   on Windows 10 the window simply looks flat.
 - **Discord Stable.** Canary, PTB and Development builds are detected but have not been
   tested.
-- Administrator rights, because Discord lives under your user profile and the tool
-  terminates the running client before touching files.
+- Administrator rights. The script elevates itself on start, but only the optional
+  autostart cleanup needs them (it can remove Discord's entry from `HKLM\...\Run`);
+  everything else is per-user. Run it from the account Discord is installed under:
+  paths come from `%LOCALAPPDATA%` and `%APPDATA%`, so elevating with a different admin
+  account points it at that account's profile.
 
 ---
 

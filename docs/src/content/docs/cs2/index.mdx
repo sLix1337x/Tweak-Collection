@@ -33,7 +33,7 @@ Sorted by measured effect on 1 % lows.
 | **1** | Memory profile (XMP/EXPO) enabled | Double-digit 1%-low difference against a JEDEC fallback | High |
 | **1** | VBS / HVCI decision — [platform-dependent](#the-vbs-decision) | ~5–10 % average, more on lows in CPU-bound scenes | High |
 | **1** | Driver hygiene; avoid known bad updates | Recovers whatever a regression removed | High |
-| **1** | [Frame-cap strategy](./frame-cap/) | 10–30 FPS of 1% low between limiters at the same cap | High |
+| **1** | [Frame-cap strategy](./frame-cap/) | 10–30 FPS of 1% low between limiters at the same cap (one test, not CS2) | Medium |
 | **2** | Thermals and sustained clocks | Sets the floor for everything else | High |
 | **2** | [Thread placement](./system/#cpu-scheduling) on dual-CCD X3D | Fixes a specific stutter class; no effect on other hardware | Medium-high |
 | **2** | [MPO off](../guides/nvidia-driver-install/#multiplane-overlay-in-more-detail), where the symptom is present | Fixes flicker and alt-tab stutter; no effect otherwise | Medium-high |
